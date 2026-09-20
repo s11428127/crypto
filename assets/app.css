@@ -1,36 +1,59 @@
 /* BTC 風險控制台 —— 設計語彙 */
 
 :root {
-  --bg:        #0e1116;
-  --surface:   #171b22;
-  --surface-2: #1f242d;
-  --line:      #2a313c;
-  --text:      #e6e9ef;
-  --text-dim:  #949cab;
-  --accent:    #f7931a;   /* Bitcoin orange */
-  --accent-dim:#8a5510;
-  --long:      #26a17b;
-  --short:     #e5484d;
-  --warn:      #f5a524;
-  --stop:      #38bdf8;   /* 止損線專用，避免和進場的橘色混淆 */
-  --danger:    #e5484d;
-  --safe:      #26a17b;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
-          "PingFang TC", "Microsoft JhengHei", sans-serif;
-  --radius: 10px;
-}
-
-:root[data-theme="light"] {
+  /* 淺色為基底，深色在下方的兩個區塊覆蓋 */
   --bg:        #f6f7f9;
   --surface:   #ffffff;
   --surface-2: #eef0f4;
   --line:      #d8dce3;
   --text:      #171b22;
   --text-dim:  #5e6675;
-  --accent:    #d97706;
+  --accent:    #d97706;   /* Bitcoin orange，淺色下調暗以保持對比 */
   --accent-dim:#fde3c0;
-  --stop:      #0284c7;
+  --stop:      #0284c7;   /* 止損線專用，避免和進場的橘色混淆 */
+  --long:      #26a17b;
+  --short:     #e5484d;
+  --warn:      #b45309;
+  --danger:    #dc2626;
+  --safe:      #15803d;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+          "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --radius: 10px;
+}
+
+/* 跟隨系統的深色模式（除非使用者手動選了淺色） */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #0e1116;
+    --surface:   #171b22;
+    --surface-2: #1f242d;
+    --line:      #2a313c;
+    --text:      #e6e9ef;
+    --text-dim:  #949cab;
+    --accent:    #f7931a;
+    --accent-dim:#8a5510;
+    --stop:      #38bdf8;
+    --warn:      #f5a524;
+    --danger:    #e5484d;
+    --safe:      #26a17b;
+  }
+}
+
+/* 使用者手動選深色 */
+:root[data-theme="dark"] {
+  --bg:        #0e1116;
+  --surface:   #171b22;
+  --surface-2: #1f242d;
+  --line:      #2a313c;
+  --text:      #e6e9ef;
+  --text-dim:  #949cab;
+  --accent:    #f7931a;
+  --accent-dim:#8a5510;
+  --stop:      #38bdf8;
+  --warn:      #f5a524;
+  --danger:    #e5484d;
+  --safe:      #26a17b;
 }
 
 * { box-sizing: border-box; }

@@ -284,21 +284,40 @@
     if (!entryTouched && $('s-entry')) $('s-entry').value = $('i-entry').value;
   });
 
-  /* 主題切換 */
+  /* 主題切換：預設跟隨系統，使用者手動選過才覆蓋並記住 */
   var tbtn = $('theme-toggle');
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function effectiveTheme() {
+    var set = document.documentElement.getAttribute('data-theme');
+    if (set === 'dark' || set === 'light') return set;
+    return mq && mq.matches ? 'dark' : 'light';
+  }
+  function syncButton() {
+    if (tbtn) tbtn.textContent = effectiveTheme() === 'dark' ? '淺色' : '深色';
+  }
   function applyTheme(t) {
-    document.documentElement.setAttribute('data-theme', t);
-    if (tbtn) tbtn.textContent = t === 'light' ? '深色' : '淺色';
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.removeAttribute('data-theme');
+    syncButton();
     drawLadder();
   }
-  var saved = 'dark';
-  try { saved = localStorage.getItem('btcrisk-theme') || 'dark'; } catch (e) {}
+
+  var saved = null;
+  try { saved = localStorage.getItem('btcrisk-theme'); } catch (e) {}
   applyTheme(saved);
+
   if (tbtn) {
     tbtn.addEventListener('click', function () {
-      var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
       applyTheme(next);
       try { localStorage.setItem('btcrisk-theme', next); } catch (e) {}
+    });
+  }
+  // 沒有手動選過的話，系統切換時跟著走
+  if (mq && mq.addEventListener) {
+    mq.addEventListener('change', function () {
+      if (!document.documentElement.getAttribute('data-theme')) { syncButton(); drawLadder(); }
     });
   }
 
