@@ -1,0 +1,11 @@
+{
+  "name": "btc-risk-console",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BTC 合約風險控制與技術分析工具",
+  "scripts": {
+    "test": "node test/risk.test.js",
+    "serve": "npx http-server -p 8099 -s ."
+  }
+}

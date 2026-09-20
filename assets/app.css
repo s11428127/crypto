@@ -1,0 +1,213 @@
+/* BTC 風險控制台 —— 設計語彙 */
+
+:root {
+  --bg:        #0e1116;
+  --surface:   #171b22;
+  --surface-2: #1f242d;
+  --line:      #2a313c;
+  --text:      #e6e9ef;
+  --text-dim:  #949cab;
+  --accent:    #f7931a;   /* Bitcoin orange */
+  --accent-dim:#8a5510;
+  --long:      #26a17b;
+  --short:     #e5484d;
+  --warn:      #f5a524;
+  --stop:      #38bdf8;   /* 止損線專用，避免和進場的橘色混淆 */
+  --danger:    #e5484d;
+  --safe:      #26a17b;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+          "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --radius: 10px;
+}
+
+:root[data-theme="light"] {
+  --bg:        #f6f7f9;
+  --surface:   #ffffff;
+  --surface-2: #eef0f4;
+  --line:      #d8dce3;
+  --text:      #171b22;
+  --text-dim:  #5e6675;
+  --accent:    #d97706;
+  --accent-dim:#fde3c0;
+  --stop:      #0284c7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 16px 96px; }
+
+/* ---------- topbar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; letter-spacing: .3px; }
+.brand b { color: var(--accent); }
+.topbar .spacer { flex: 1; }
+.ghost-btn {
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 5px 11px; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.ghost-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* ---------- 區塊 ---------- */
+section { margin-top: 36px; }
+h1 { font-size: 26px; line-height: 1.35; margin: 28px 0 8px; }
+h2 {
+  font-size: 19px; margin: 0 0 6px;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+h2 .num {
+  font-family: var(--mono); font-size: 13px; color: var(--accent);
+  border: 1px solid var(--accent-dim); border-radius: 5px;
+  padding: 1px 7px; flex: none;
+}
+h3 { font-size: 16px; margin: 22px 0 6px; }
+.lede { color: var(--text-dim); margin: 0 0 18px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.card + .card { margin-top: 14px; }
+
+/* ---------- 表單 ---------- */
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label { font-size: 13px; color: var(--text-dim); }
+.field input, .field select {
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 11px; font-family: var(--mono); font-size: 15px;
+  width: 100%; min-width: 0;
+}
+.field input:focus, .field select:focus {
+  outline: none; border-color: var(--accent);
+}
+.seg { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button {
+  flex: 1; padding: 9px 0; background: var(--surface-2); color: var(--text-dim);
+  border: 0; cursor: pointer; font-family: inherit; font-size: 14px;
+}
+.seg button[aria-pressed="true"] { color: #fff; }
+.seg button[data-side="long"][aria-pressed="true"]  { background: var(--long); }
+.seg button[data-side="short"][aria-pressed="true"] { background: var(--short); }
+
+/* ---------- 數據輸出 ---------- */
+.readout {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; margin-top: 16px;
+}
+.stat { background: var(--surface); padding: 12px 14px; min-width: 0; }
+.stat .k { font-size: 12px; color: var(--text-dim); }
+.stat .v {
+  font-family: var(--mono); font-size: 20px; font-weight: 600;
+  margin-top: 2px; overflow-wrap: anywhere;
+}
+.stat .sub { font-size: 12px; color: var(--text-dim); }
+.v.danger { color: var(--danger); }
+.v.warn   { color: var(--warn); }
+.v.safe   { color: var(--safe); }
+
+/* ---------- 警示條 ---------- */
+.alert {
+  border-radius: var(--radius); padding: 12px 14px; margin-top: 14px;
+  border: 1px solid; font-size: 14px; line-height: 1.6;
+}
+.alert > b:first-child { display: block; margin-bottom: 2px; }
+.alert.danger { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.alert.warn   { border-color: var(--warn);   background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.alert.safe   { border-color: var(--safe);   background: color-mix(in srgb, var(--safe) 12%, transparent); }
+.alert.info   { border-color: var(--line);   background: var(--surface-2); color: var(--text-dim); }
+
+/* ---------- canvas ---------- */
+.stage { margin-top: 16px; }
+.stage canvas { display: block; width: 100%; border-radius: var(--radius); background: var(--surface-2); }
+.legend {
+  display: flex; flex-wrap: wrap; gap: 6px 16px;
+  margin-top: 10px; font-size: 12px; color: var(--text-dim);
+}
+.legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+
+/* ---------- 教學元件 ---------- */
+.tm { white-space: nowrap; }
+.tm i { font-family: var(--mono); font-size: .85em; color: var(--text-dim); font-style: normal; margin-left: 4px; }
+
+.derive {
+  border-left: 2px solid var(--accent); background: var(--surface-2);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 14px 16px; margin: 14px 0;
+}
+.derive ol { margin: 0; padding-left: 20px; }
+.derive li { margin-bottom: 12px; }
+.derive li:last-child { margin-bottom: 0; }
+.eq {
+  font-family: var(--mono); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 9px 12px; margin: 6px 0; overflow-x: auto;
+  font-size: 14px; white-space: pre;
+}
+.eq.key { border-color: var(--accent); color: var(--accent); }
+.why { font-size: 13.5px; color: var(--text-dim); }
+
+.example { border: 1px dashed var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 14px 0; }
+.example .step { margin-bottom: 10px; }
+.example .step b { color: var(--accent); font-size: 13px; }
+.ex-ans { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px; font-weight: 600; }
+
+.pitfall { margin: 14px 0; }
+.pitfall ul { list-style: none; padding: 0; margin: 0; }
+.pitfall li { display: flex; gap: 9px; margin-bottom: 9px; align-items: flex-start; }
+.pitfall .x { color: var(--danger); font-weight: 700; flex: none; }
+.pitfall .o { color: var(--safe); font-weight: 700; flex: none; }
+
+details.note {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 0 14px; margin: 12px 0; background: var(--surface);
+}
+details.note > summary {
+  cursor: pointer; padding: 11px 0; font-size: 14px; color: var(--accent);
+  list-style: none;
+}
+details.note > summary::-webkit-details-marker { display: none; }
+details.note > summary::before { content: "＋ "; }
+details.note[open] > summary::before { content: "－ "; }
+details.note > div { padding-bottom: 12px; }
+
+table.glossary { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+table.glossary th, table.glossary td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top;
+}
+table.glossary th { color: var(--text-dim); font-weight: 500; font-size: 12px; }
+table.glossary td.en { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+
+.disclaimer {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface-2); padding: 12px 14px;
+  font-size: 13px; color: var(--text-dim); margin-top: 20px;
+}
+
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+         color: var(--text-dim); font-size: 13px; }

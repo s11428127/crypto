@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BTC 風險控制台</title>
+<meta name="description" content="比特幣合約的爆倉價、部位大小與可行性計算，附完整中文推導。">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">BTC <b>風險控制台</b></span>
+  <span class="spacer"></span>
+  <button class="ghost-btn" id="theme-toggle" type="button">淺色</button>
+</div>
+
+<div class="wrap">
+
+<h1>先把風險算清楚，再談進場</h1>
+<p class="lede">
+  這一頁只做一件事：把「<span class="tm">槓桿<i>leverage</i></span>、<span class="tm">爆倉價<i>liquidation price</i></span>、<span class="tm">部位大小<i>position size</i></span>」
+  三者的關係算到你沒有模糊空間。技術分析的訊號是下一階段的事 —— 因為訊號再準，部位開錯大小一樣會歸零。
+</p>
+
+<!-- ══════════════ 1 ══════════════ -->
+<section id="inspect">
+  <h2><span class="num">1</span>部位體檢</h2>
+  <p class="lede">已經開了倉？先看清楚你現在站在哪裡。預設值是一筆 $44 保證金、20 倍、80,606 進場的多單。</p>
+
+  <div class="card">
+    <div class="grid">
+      <div class="field">
+        <label for="i-entry">進場價 <span class="tm"><i>entry price</i></span> (USDT)</label>
+        <input type="number" id="i-entry" value="80606" step="0.1" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>方向 <span class="tm"><i>side</i></span></label>
+        <div class="seg" id="i-side">
+          <button type="button" data-side="long"  aria-pressed="true">做多 Long</button>
+          <button type="button" data-side="short" aria-pressed="false">做空 Short</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="i-margin">保證金 <span class="tm"><i>margin</i></span> (USDT)</label>
+        <input type="number" id="i-margin" value="44" step="1" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="i-lev">槓桿 <span class="tm"><i>leverage</i></span> (倍)</label>
+        <input type="number" id="i-lev" value="20" step="1" min="1" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="readout" id="i-out"></div>
+    <div id="i-alerts"></div>
+  </div>
+
+  <details class="note">
+    <summary>爆倉價是怎麼算出來的？</summary>
+    <div>
+      <p>爆倉不是「虧光保證金」才發生，而是「權益低於<span class="tm">維持保證金<i>maintenance margin</i></span>」就發生 —— 所以它<b>比你想的更早到</b>。</p>
+      <div class="derive">
+        <ol>
+          <li>
+            <div class="eq">權益 = 保證金 M + 數量 q × (現價 P − 進場價 E)</div>
+            <div class="why">你的帳面權益 = 本來投入的錢，加上這筆倉的浮動盈虧。</div>
+          </li>
+          <li>
+            <div class="eq">維持保證金 = MMR × q × P</div>
+            <div class="why">交易所要求你隨時留著一小筆錢當緩衝。MMR 是維持保證金率，BTCUSDT 小額倉大約 0.4%。</div>
+          </li>
+          <li>
+            <div class="eq">爆倉條件：M + qP − qE = MMR · q · P</div>
+            <div class="why">兩邊相等的那一刻，系統把你強制平倉。把這條解出 P 就是爆倉價。</div>
+          </li>
+          <li>
+            <div class="eq">qP(1 − MMR) = qE − M
+P = (qE − M) / (q(1 − MMR))</div>
+            <div class="why">把含 P 的項移到同一邊，再除掉係數。</div>
+          </li>
+          <li>
+            <div class="eq key">代入 q·E = M × L，得
+P_liq = E × (1 − 1/L) / (1 − MMR)</div>
+            <div class="why">數量和保證金都被約掉了。<b>結論：爆倉價只跟進場價、槓桿、MMR 有關，跟你開多大無關。</b>這就是為什麼「我只開小倉」不會讓你比較安全 —— 安全與否是槓桿決定的。</div>
+          </li>
+        </ol>
+      </div>
+      <p class="why">做空同理，符號相反：<code>P_liq = E × (1 + 1/L) / (1 + MMR)</code>。<br>
+      以上是<b>逐倉</b>的算法。全倉會吃到整個錢包餘額，爆倉價更遠，但爆的時候是全部一起賠。實際數字請以交易所 App 顯示的為準。</p>
+    </div>
+  </details>
+</section>
+
+<!-- ══════════════ 2 ══════════════ -->
+<section id="sizing">
+  <h2><span class="num">2</span>正確順序：從止損反推部位</h2>
+  <p class="lede">
+    絕大多數人的順序是「先選槓桿 → 開倉 → 再想止損放哪」。這個順序保證會爆倉。<br>
+    正確的是反過來：<b>先定止損 → 決定願意虧多少 → 算出部位 → 槓桿是被算出來的結果</b>。
+  </p>
+
+  <div class="card">
+    <div class="grid">
+      <div class="field">
+        <label for="s-equity">合約本金 <span class="tm"><i>equity</i></span> (USDT)</label>
+        <input type="number" id="s-equity" value="44" step="1" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="s-risk">單筆風險 <span class="tm"><i>risk per trade</i></span> (%)</label>
+        <input type="number" id="s-risk" value="1" step="0.1" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="s-entry">進場價 (USDT)</label>
+        <input type="number" id="s-entry" value="80606" step="0.1" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="s-stop">止損價 <span class="tm"><i>stop loss</i></span> (USDT)</label>
+        <input type="number" id="s-stop" value="79000" step="0.1" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="readout" id="s-out"></div>
+    <div id="s-alerts"></div>
+  </div>
+
+  <details class="note">
+    <summary>為什麼「隱含槓桿 = 風險% ÷ 止損距離%」？</summary>
+    <div>
+      <div class="derive">
+        <ol>
+          <li>
+            <div class="eq">願意虧的錢 R = 本金 × 風險%</div>
+            <div class="why">這是你這筆交易的預算。1% 風險、$44 本金，就是 $0.44。</div>
+          </li>
+          <li>
+            <div class="eq">每 1 BTC 從進場走到止損會虧 d = |E − S|</div>
+            <div class="why">單位虧損。進場 80,606、止損 79,000，d = 1,606 USDT／BTC。</div>
+          </li>
+          <li>
+            <div class="eq">所以數量 q = R ÷ d</div>
+            <div class="why">「總預算 ÷ 每單位虧多少」＝ 買得起幾個單位。就這麼直觀。</div>
+          </li>
+          <li>
+            <div class="eq">名目 N = q × E = (R/d) × E = R ÷ (d/E)</div>
+            <div class="why">d/E 就是止損距離的百分比。</div>
+          </li>
+          <li>
+            <div class="eq key">隱含槓桿 = N ÷ 本金 = 風險% ÷ 止損距離%</div>
+            <div class="why"><b>這是整個工具最重要的一行。</b>槓桿不是一個你去設定的旋鈕，它是上面兩個數字的商。</div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="example">
+        <div class="step"><b>Step 1</b>　本金 $44，單筆風險 1% → 願意虧 $0.44</div>
+        <div class="step"><b>Step 2</b>　進場 80,606，止損 79,000 → 距離 1,606，即 1.99%</div>
+        <div class="step"><b>Step 3</b>　數量 q = 0.44 ÷ 1,606 = 0.000274 BTC</div>
+        <div class="step"><b>Step 4</b>　名目 N = 0.000274 × 80,606 = $22.1</div>
+        <div class="step"><b>Step 5</b>　隱含槓桿 = 22.1 ÷ 44 = <b>0.5 倍</b>（也可直接算 1% ÷ 1.99%）</div>
+        <div class="ex-ans">
+          答案：要做到 1% 風險，你該開的是 <b>0.5 倍</b>，不是 20 倍。
+          換句話說你連本金都用不完 —— 而 20 倍是它的 40 倍大。
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="note">
+    <summary>可行性檢查：交易所的最小下單量會擋住小資金</summary>
+    <div>
+      <p>上面算出 0.000274 BTC —— 但 Binance 的 BTCUSDT 永續<b>最小下單量是 0.001 BTC，而且名目不得低於 100 USDT</b>。
+      你根本下不了這麼小的單。</p>
+      <p>這不是紀律問題，是<b>部位顆粒度的物理限制</b>。小資金帳戶被迫承擔比自己想要的更高的風險，
+      而這正是「為什麼我一定要開高槓桿」的真正原因 —— 不是貪心，是本金不夠讓你選。</p>
+      <div id="feas-box"></div>
+      <p class="why">這些限制的實際數值，之後會由工具直接向交易所的 <code>exchangeInfo</code> 端點抓取確認，不靠寫死的預設值。</p>
+    </div>
+  </details>
+</section>
+
+<!-- ══════════════ 3 ══════════════ -->
+<section id="ladder">
+  <h2><span class="num">3</span>價格軸：把四個價位放在一起看</h2>
+  <p class="lede">
+    數字看不出嚴重性，畫在同一條軸上就很清楚了。特別注意<b>爆倉線有沒有落在止損線的裡面</b> ——
+    如果有，代表你還沒停損就先被強制平倉，止損等於沒設。
+  </p>
+  <div class="card">
+    <div class="stage"><canvas id="ladder-canvas"></canvas></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>進場 Entry</span>
+      <span><i style="background:var(--danger)"></i>爆倉 Liquidation</span>
+      <span><i style="background:var(--stop)"></i>止損 Stop</span>
+      <span><i style="background:var(--safe)"></i>止盈 TP (1R / 2R)</span>
+      <span><i style="background:var(--text-dim)"></i>4H 典型波動範圍</span>
+    </div>
+    <div id="ladder-alerts"></div>
+  </div>
+</section>
+
+<!-- ══════════════ 4 ══════════════ -->
+<section id="math">
+  <h2><span class="num">4</span>槓桿到底在放大什麼</h2>
+  <p class="lede">一句話：<b>槓桿不會提高你的勝率，它只壓縮你能承受的錯誤空間。</b></p>
+
+  <div class="card">
+    <p>用最簡單的方式理解：槓桿 L 倍，代表價格每變動 1%，你的帳戶權益就變動 L%。</p>
+    <div class="eq key">帳戶變動% = 槓桿 × 價格變動%</div>
+    <p>所以在 20 倍下：</p>
+    <table class="glossary">
+      <tr><th>BTC 價格變動</th><th>你的帳戶</th><th>意義</th></tr>
+      <tr><td class="en">−0.5%</td><td>−10%</td><td>一根 15 分鐘 K 棒的事</td></tr>
+      <tr><td class="en">−1%</td><td>−20%</td><td>4H 級別的日常雜訊</td></tr>
+      <tr><td class="en">−2.5%</td><td>−50%</td><td>帳戶腰斬</td></tr>
+      <tr><td class="en">−4.6%</td><td>−100%</td><td>爆倉，歸零</td></tr>
+    </table>
+    <p style="margin-top:16px">
+      關鍵在於：<b>BTC 在 4H 級別的<span class="tm">平均真實區間<i>ATR</i></span>本來就常常是 1~2%。</b>
+      這代表在 20 倍下，你不需要看錯方向 —— 一個完全正常的回調就足以讓帳戶腰斬。
+      你不是輸在判斷，是輸在<b>撐不到判斷被驗證</b>。
+    </p>
+  </div>
+
+  <h3>手續費的隱形成本</h3>
+  <div class="card">
+    <p>Binance U 本位合約<span class="tm">吃單<i>taker</i></span>費率約 0.045%，一趟來回 0.09%（以<b>名目</b>計算，不是以本金計算）。</p>
+    <div class="derive">
+      <ol>
+        <li>
+          <div class="eq">$880 名目來回手續費 = 880 × 0.045% × 2 = $0.79</div>
+          <div class="why">看起來很少。但要跟「你這筆願意虧多少」比，而不是跟本金比。</div>
+        </li>
+        <li>
+          <div class="eq key">若這筆風險預算是 $0.44 → 手續費 = 1.8 R</div>
+          <div class="why">意思是：光手續費就吃掉你 1.8 筆停損。這筆交易在數學上就不該做 —— 你得先贏 1.8R 才回到原點。</div>
+        </li>
+      </ol>
+    </div>
+    <p class="why">
+      這就是高槓桿小資金最隱蔽的殺手：名目被槓桿放大，手續費跟著名目放大，
+      但你的風險預算是跟著本金算的。兩邊不同步，費用佔比就爆掉。
+    </p>
+  </div>
+
+  <h3>翻倍需要幾筆交易？</h3>
+  <div class="card">
+    <p>假設勝率 50%、<span class="tm">盈虧比<i>R:R</i></span> 1:2，每筆的期望值是：</p>
+    <div class="eq">期望值 = 0.5 × (+2R) + 0.5 × (−1R) = +0.5 R</div>
+    <table class="glossary">
+      <tr><th>單筆風險</th><th>每筆期望</th><th>翻倍所需筆數</th><th>連輸 8 筆後</th></tr>
+      <tr><td class="en">1%</td><td>+0.5%</td><td>約 140 筆</td><td>−8%</td></tr>
+      <tr><td class="en">4%</td><td>+2%</td><td>約 35 筆</td><td>−32%</td></tr>
+      <tr><td class="en">7.3%</td><td>+3.7%</td><td>約 19 筆</td><td>−58%</td></tr>
+      <tr><td class="en">梭哈 20x</td><td>—</td><td>1~2 筆</td><td>早就歸零</td></tr>
+    </table>
+    <p style="margin-top:16px">
+      注意最後一欄。<b>在勝率 50% 的系統裡，連輸 8 筆是常態，不是意外</b>（機率約 1/256，做 200 筆幾乎一定會遇到）。
+      你的風險設定必須讓你在連輸 8 筆之後還活著 —— 不然你等不到期望值兌現的那一天。
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════ 5 ══════════════ -->
+<section id="pitfalls">
+  <h2><span class="num">5</span>常見錯誤</h2>
+  <div class="card pitfall">
+    <ul>
+      <li><span class="x">✗</span><div>先決定「我要開 20 倍」，再去想止損放哪。<br>
+        <span class="why">→ 槓桿是結果不是設定。順序反了，止損就只能遷就槓桿，而不是遷就市場結構。</span></div></li>
+      <li><span class="o">✓</span><div>先看圖找結構低點 → 止損放它下面 → 用風險% 反推部位 → 槓桿自然出現。</div></li>
+
+      <li><span class="x">✗</span><div>「我只開一點點倉，所以很安全。」<br>
+        <span class="why">→ 爆倉價由槓桿決定，跟倉位大小無關（見第 1 節推導，q 被約掉了）。開小倉只是虧得少，不是比較不會爆。</span></div></li>
+      <li><span class="o">✓</span><div>安全與否看的是「爆倉價離進場多遠」和「那個距離有沒有大於市場的正常波動」。</div></li>
+
+      <li><span class="x">✗</span><div>不設止損，想著「跌下去我就凹回來」。<br>
+        <span class="why">→ 沒有止損的槓桿倉，你的止損就是爆倉價，而爆倉是歸零、沒有剩餘的出場方式。</span></div></li>
+      <li><span class="o">✓</span><div>開倉的同時就掛止損單。在 30% 和 100% 之間，你只能選一個。</div></li>
+
+      <li><span class="x">✗</span><div>用「感覺」決定止損距離，結果止損比爆倉價還遠。<br>
+        <span class="why">→ 這種設定下止損永遠不會觸發，等於沒設。第 3 節的圖就是用來抓這個錯誤的。</span></div></li>
+      <li><span class="o">✓</span><div>確認止損價在爆倉價<b>之內</b>（做多時：止損 &gt; 爆倉價）。</div></li>
+
+      <li><span class="x">✗</span><div>看到資金費率很高，覺得「大家都在做多，跟著做多準沒錯」。<br>
+        <span class="why">→ 反了。<span class="tm">資金費率<i>funding rate</i></span>極端正值代表多單過度擁擠，是被掃的燃料，通常當反指標看。</span></div></li>
+      <li><span class="o">✓</span><div>費率極端時提高警覺，而不是跟風加碼。</div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════ 6 ══════════════ -->
+<section id="glossary">
+  <h2><span class="num">6</span>名詞中英對照</h2>
+  <p class="lede">交易所介面和英文資料都用這些字。讀書用中文、看盤用英文，兩邊要接得起來。</p>
+  <div class="card">
+    <table class="glossary">
+      <tr><th style="width:30%">中文</th><th style="width:34%">English</th><th>一句話解釋</th></tr>
+      <tr><td>槓桿</td><td class="en">leverage</td><td>名目 ÷ 保證金。價格動 1%，帳戶動 L%。</td></tr>
+      <tr><td>名目價值</td><td class="en">notional value</td><td>部位的實際大小（數量 × 價格）。手續費按它算。</td></tr>
+      <tr><td>保證金</td><td class="en">margin</td><td>你實際投入、會被虧掉的錢。</td></tr>
+      <tr><td>逐倉 / 全倉</td><td class="en">isolated / cross</td><td>逐倉只賠這筆；全倉會吃整個錢包餘額。</td></tr>
+      <tr><td>維持保證金率</td><td class="en">maintenance margin rate (MMR)</td><td>權益低於它就強制平倉。BTC 小額約 0.4%。</td></tr>
+      <tr><td>爆倉 / 強制平倉</td><td class="en">liquidation</td><td>權益跌破維持保證金，系統替你平掉。</td></tr>
+      <tr><td>止損</td><td class="en">stop loss</td><td>事先決定認輸的價位。沒有它槓桿就是賭。</td></tr>
+      <tr><td>盈虧比</td><td class="en">risk-reward ratio (R:R)</td><td>賺的距離 ÷ 虧的距離。1R = 一次停損的幅度。</td></tr>
+      <tr><td>期望值</td><td class="en">expectancy</td><td>勝率 × 賺 − 敗率 × 虧。負的就別做。</td></tr>
+      <tr><td>資金費率</td><td class="en">funding rate</td><td>多空之間的定期付費。極端值代表一邊過度擁擠。</td></tr>
+      <tr><td>未平倉量</td><td class="en">open interest (OI)</td><td>市場上還沒平掉的合約總量。看資金進出。</td></tr>
+      <tr><td>平均真實區間</td><td class="en">average true range (ATR)</td><td>近期平均波動幅度。用來決定止損該放多遠。</td></tr>
+      <tr><td>吃單 / 掛單</td><td class="en">taker / maker</td><td>吃單即時成交但費率較高；掛單費率低但可能不成交。</td></tr>
+      <tr><td>最小下單量</td><td class="en">minimum order quantity</td><td>交易所允許的最小部位。小資金的硬牆。</td></tr>
+    </table>
+  </div>
+</section>
+
+<div class="disclaimer">
+  <b>說明：</b>這是一個計算與學習工具，不是投資建議。所有數字都是根據你輸入的參數算出來的數學結果，
+  不預測市場方向。爆倉價的實際數值會因為保證金模式（逐倉／全倉）、維持保證金檔位、手續費與資金費而與此處略有差異，
+  <b>請務必以交易所 App 顯示的為準</b>。這個頁面不連接你的帳戶、不能下單、也不會讀取任何個人資料。
+</div>
+
+<footer>
+  BTC 風險控制台 · 第一階段：風險計算<br>
+  下一階段：即時 K 線與多時間框架訊號 → 交易日誌 → 幣種篩選器 → 回測
+</footer>
+
+</div>
+
+<script src="assets/risk.js"></script>
+<script src="assets/ui.js"></script>
+</body>
+</html>
