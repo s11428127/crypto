@@ -1,7 +1,7 @@
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const WIDTHS = [320, 390, 680, 1180];
-const URL = 'http://127.0.0.1:8099/index.html';
+const URL = 'http://127.0.0.1:8099/learn.html';
 let failures = 0;
 
 const browser = await chromium.launch();

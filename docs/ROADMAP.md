@@ -20,19 +20,36 @@
 - 因此用 $44 開最小倉，槓桿下限是 **3.66 倍**，配 2% 止損的最小風險是帳戶的 **7.3%**
 - **1% 單筆風險在這個本金規模下物理上做不到** —— 這不是紀律問題
 
-## 第二階段：行情與訊號
+## 第二階段：行情與訊號 ✅
 
-- `assets/data.js`：Binance 公開端點封裝
-  - `/fapi/v1/klines`、`/fapi/v1/premiumIndex`（資金費率）、`/futures/data/openInterestHist`
-  - `/fapi/v1/exchangeInfo` → 用真實的 minQty / stepSize / minNotional 取代寫死的預設值
-  - `/fapi/v1/leverageBracket` → 真實的維持保證金率（目前用 0.4% 預設）
-- `assets/indicators.js`：EMA 20/50/200、RSI14、MACD、ATR14、布林、成交量
-- 多時間框架對齊：三個框架不同調 → 直接標「觀望」。**「不做」的訊號和「做」一樣重要**
-- 進場計畫卡：方向／進場區間／止損／TP1 TP2（R 倍數）／部位大小／爆倉價／可行性
+`index.html` 主控台 + `data.js` / `indicators.js` / `plan.js` / `chart.js` / `dash.js`
 
-離線處理：API 抓不到時要有明確的錯誤提示 + 手動貼上資料的備援，不要讓頁面空白。
+已完成：
 
-## 第三階段：交易日誌
+- `data.js`：Binance 公開端點（klines、ticker/24hr、premiumIndex、openInterest、exchangeInfo）
+  + `wss://fstream.binance.com` 即時成交價。WebSocket 掛掉自動退回輪詢，
+  Binance 整個連不上自動切 Bybit，全掛則顯示明確錯誤而非白畫面。
+  下單限制改用 `exchangeInfo` 回傳的真實值，不再用寫死的預設。
+- `indicators.js`：EMA 20/50/200、RSI14（對照 Wilder 原著驗算）、MACD、ATR14、布林、樞紐高低點
+- `plan.js`：1D 定方向 → 4H 定結構 → 15m 定時機；不同調輸出「觀望」
+- 計畫卡：進場區間／止損（結構 + ATR 緩衝，夾在 0.8~2.5 ATR）／TP1 1.5R、TP2 3R／
+  部位大小／算出的槓桿／爆倉價／手續費 R 佔比
+
+踩到的坑（別再犯）：
+
+- **趨勢判讀不能只看「收盤在均線上方」** —— 均線糾結的橫盤會被誤判成趨勢。
+  已加 ATR 門檻：均線之間要拉開 0.3 ATR 以上才算方向。
+- **進場價必須用即時價**，不能用該週期的收盤價（4H 收盤可能是 4 小時前的）。
+  優先序：WebSocket > 24h ticker > 最短週期收盤。已加 E2E 斷言鎖住。
+- **`isFinite(null) === true`** —— 讓「有值就用、沒值就備援」的三元判斷選中 null，
+  價格與 K 線圖整個掛掉。一律用嚴格的 `isNum()`。
+
+還沒做：
+
+- 維持保證金率仍用 0.4% 預設。`/fapi/v1/leverageBracket` 需要簽章，
+  公開端點拿不到，所以爆倉價會和交易所顯示的有小誤差（頁面上已標註）。
+
+## 第三階段：交易日誌（下一步）
 
 每筆記錄：日期、方向、進場、止損、出場、實際 R 倍數、當時的訊號依據。
 累積輸出：勝率、平均 R、期望值、最大連續虧損、最大回撤。
