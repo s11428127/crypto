@@ -349,32 +349,7 @@
     } catch (e) {}
   }
 
-  /* 主題：預設跟隨系統 */
-  var tbtn = $('theme-toggle');
-  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  function effectiveTheme() {
-    var s = document.documentElement.getAttribute('data-theme');
-    return (s === 'dark' || s === 'light') ? s : (mq && mq.matches ? 'dark' : 'light');
-  }
-  function applyTheme(t) {
-    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
-    else document.documentElement.removeAttribute('data-theme');
-    tbtn.textContent = effectiveTheme() === 'dark' ? '淺色' : '深色';
-    renderChart();
-  }
-  var saved = null;
-  try { saved = localStorage.getItem('btcrisk-theme'); } catch (e) {}
-  applyTheme(saved);
-  tbtn.addEventListener('click', function () {
-    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
-    applyTheme(next);
-    try { localStorage.setItem('btcrisk-theme', next); } catch (e) {}
-  });
-  if (mq && mq.addEventListener) {
-    mq.addEventListener('change', function () {
-      if (!document.documentElement.getAttribute('data-theme')) applyTheme(null);
-    });
-  }
+  THEME.init(function () { renderChart(); });
 
   var rT;
   window.addEventListener('resize', function () {

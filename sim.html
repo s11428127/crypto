@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>模擬與回測</title>
+<meta name="description" content="小資金帳戶的結果分布模擬，以及用真實歷史 K 線跑策略回測。">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">BTC<b>USDT</b></span>
+  <span class="src" id="src-name">模擬・回測</span>
+  <span class="spacer"></span>
+  <button class="ghost-btn" id="theme-toggle" type="button">淺色</button>
+</div>
+
+<div class="wrap">
+  <nav class="nav">
+    <a href="index.html">主控台</a>
+    <a href="screener.html">篩選器</a>
+    <a href="sim.html" aria-current="page">模擬・回測</a>
+    <a href="journal.html">交易日誌</a>
+  </nav>
+
+  <!-- ═══ 模擬 ═══ -->
+  <div class="sec">
+    <h2>結果分布模擬</h2>
+    <p class="hint">
+      給定勝率和盈虧比，做 N 筆之後會變怎樣。**這不是預測市場**，是把已知的優勢丟進骰子看分布。
+      它會把兩個小資金特有的摩擦算進去：交易所最小下單量（部位切不細）和按名目計算的手續費。
+    </p>
+
+    <div class="params">
+      <div class="field"><label for="s-equity">本金 USDT</label>
+        <input type="number" id="s-equity" value="100" step="10" inputmode="decimal"></div>
+      <div class="field"><label for="s-risk">想冒的風險 %</label>
+        <input type="number" id="s-risk" value="1" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="s-win">勝率 %</label>
+        <input type="number" id="s-win" value="45" step="1" inputmode="decimal"></div>
+      <div class="field"><label for="s-rr">盈虧比 1:</label>
+        <input type="number" id="s-rr" value="2" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="s-n">交易筆數</label>
+        <input type="number" id="s-n" value="100" step="10" inputmode="decimal"></div>
+      <div class="field"><label for="s-price">BTC 價格</label>
+        <input type="number" id="s-price" value="80606" step="100" inputmode="decimal"></div>
+      <div class="field"><label for="s-stop">止損距離 %</label>
+        <input type="number" id="s-stop" value="2" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="s-lev">槓桿上限 x</label>
+        <input type="number" id="s-lev" value="20" step="1" inputmode="decimal"></div>
+    </div>
+
+    <div id="sizing-box"></div>
+    <div class="kv" id="sim-out"></div>
+    <canvas class="panel" id="sim-hist"></canvas>
+    <div class="ma-legend" id="sim-legend"></div>
+    <div id="sim-warn"></div>
+  </div>
+
+  <!-- ═══ 回測 ═══ -->
+  <div class="sec">
+    <h2>歷史回測</h2>
+    <p class="hint">
+      用交易所的真實歷史 K 線，把主控台那套訊號（1D 定方向、4H 定結構）逐根跑一次。
+      進場價用下一根的開盤、同根同時觸及止損止盈算止損、手續費與資金費都扣掉 —— 盡量不要高估。
+      <b>沒回測過的指標就是玄學。</b>
+    </p>
+
+    <div class="params">
+      <div class="field"><label for="b-equity">起始本金 USDT</label>
+        <input type="number" id="b-equity" value="100" step="10" inputmode="decimal"></div>
+      <div class="field"><label for="b-risk">單筆風險 %</label>
+        <input type="number" id="b-risk" value="1" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="b-lev">槓桿上限 x</label>
+        <input type="number" id="b-lev" value="20" step="1" inputmode="decimal"></div>
+    </div>
+
+    <div class="bar-actions">
+      <button class="btn" id="run-bt" type="button">抓歷史資料並回測</button>
+      <span class="updated" id="bt-status"></span>
+    </div>
+    <div class="progress" id="bt-prog" hidden><i></i></div>
+
+    <div class="kv" id="bt-out"></div>
+    <canvas class="panel" id="bt-curve"></canvas>
+    <div class="ma-legend" id="bt-legend"></div>
+    <div id="bt-warn"></div>
+    <div class="tbl-wrap" id="bt-trades" style="margin-top:12px"></div>
+  </div>
+
+  <div class="disclaimer">
+    模擬是在給定的勝率／盈虧比下的統計結果，不是對市場的預測；回測是歷史資料上的表現，
+    不保證未來重現。兩者都不是投資建議。
+  </div>
+</div>
+
+<script src="assets/theme.js"></script>
+<script src="assets/risk.js"></script>
+<script src="assets/indicators.js"></script>
+<script src="assets/plan.js"></script>
+<script src="assets/sim.js"></script>
+<script src="assets/backtest.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/sim-page.js"></script>
+</body>
+</html>

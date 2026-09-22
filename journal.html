@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>交易日誌</title>
+<meta name="description" content="記錄每筆交易的 R 倍數，累積算出真實的勝率與期望值。">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">BTC<b>USDT</b></span>
+  <span class="src" id="src-name">交易日誌</span>
+  <span class="spacer"></span>
+  <button class="ghost-btn" id="theme-toggle" type="button">淺色</button>
+</div>
+
+<div class="wrap">
+  <nav class="nav">
+    <a href="index.html">主控台</a>
+    <a href="screener.html">篩選器</a>
+    <a href="sim.html">模擬・回測</a>
+    <a href="journal.html" aria-current="page">交易日誌</a>
+  </nav>
+
+  <div class="sec">
+    <h2>統計</h2>
+    <p class="hint">
+      全部以 R 為單位（1R = 一次停損的幅度），因為只有 R 能跨不同部位大小比較。
+      <b>不到 30 筆的勝率沒有統計意義</b>，別急著下結論。
+    </p>
+    <div class="kv" id="stats"></div>
+    <canvas class="panel" id="rcurve"></canvas>
+    <div class="ma-legend" id="rlegend"></div>
+    <div id="stat-warn"></div>
+  </div>
+
+  <div class="sec">
+    <h2>新增一筆</h2>
+    <p class="hint">止損價填「你當初設定的」，不是實際出場價 —— R 是用原始風險算的。</p>
+    <div class="params">
+      <div class="field"><label for="j-date">日期</label>
+        <input type="date" id="j-date"></div>
+      <div class="field"><label for="j-symbol">幣種</label>
+        <input type="text" id="j-symbol" value="BTCUSDT"></div>
+      <div class="field"><label for="j-side">方向</label>
+        <select id="j-side"><option value="long">做多</option><option value="short">做空</option></select></div>
+      <div class="field"><label for="j-entry">進場價</label>
+        <input type="number" id="j-entry" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="j-stop">止損價</label>
+        <input type="number" id="j-stop" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="j-exit">出場價</label>
+        <input type="number" id="j-exit" step="0.1" inputmode="decimal"></div>
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label for="j-note">依據 / 備註（為什麼進這筆）</label>
+      <input type="text" id="j-note" placeholder="例：1D 多、4H 回踩 EMA20、15m 轉強">
+    </div>
+    <div class="bar-actions">
+      <button class="btn" id="add" type="button">加入</button>
+      <span class="updated" id="preview"></span>
+    </div>
+    <div id="form-warn"></div>
+  </div>
+
+  <div class="sec">
+    <h2>紀錄</h2>
+    <div class="tbl-wrap" id="list"></div>
+    <div class="bar-actions">
+      <button class="ghost-btn" id="export" type="button">匯出 JSON</button>
+      <button class="ghost-btn" id="import-btn" type="button">匯入 JSON</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+      <span class="updated" id="io-status"></span>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    紀錄存在這個瀏覽器本機（localStorage），不會上傳到任何地方 ——
+    也代表<b>換裝置或清除瀏覽器資料就會不見</b>，重要的話記得匯出備份。
+  </div>
+</div>
+
+<script src="assets/theme.js"></script>
+<script src="assets/journal.js"></script>
+<script src="assets/journal-page.js"></script>
+</body>
+</html>

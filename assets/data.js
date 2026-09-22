@@ -78,6 +78,25 @@
         };
       });
     },
+    // 全市場 24h 行情：一次呼叫拿回所有合約，篩選器用
+    allTickers: function () {
+      return fetchJSON(this.base + '/fapi/v1/ticker/24hr').then(function (rows) {
+        return rows.filter(function (d) { return /USDT$/.test(d.symbol); })
+          .map(function (d) {
+            return { symbol: d.symbol, last: +d.lastPrice, changePct: +d.priceChangePercent,
+                     quoteVolume: +d.quoteVolume };
+          });
+      });
+    },
+    allFunding: function () {
+      return fetchJSON(this.base + '/fapi/v1/premiumIndex').then(function (rows) {
+        var m = {};
+        (Array.isArray(rows) ? rows : [rows]).forEach(function (d) {
+          m[d.symbol] = +d.lastFundingRate;
+        });
+        return m;
+      });
+    },
     wsUrl: function (sym) {
       return 'wss://fstream.binance.com/ws/' + sym.toLowerCase() + '@aggTrade';
     },
@@ -141,6 +160,23 @@
             pricePrecision: 2
           };
         });
+    },
+    allTickers: function () {
+      return fetchJSON(this.base + '/v5/market/tickers?category=linear').then(function (d) {
+        var list = (d.result && d.result.list) || [];
+        return list.filter(function (x) { return /USDT$/.test(x.symbol); })
+          .map(function (x) {
+            return { symbol: x.symbol, last: +x.lastPrice,
+                     changePct: +x.price24hPcnt * 100, quoteVolume: +x.turnover24h };
+          });
+      });
+    },
+    allFunding: function () {
+      return fetchJSON(this.base + '/v5/market/tickers?category=linear').then(function (d) {
+        var m = {};
+        ((d.result && d.result.list) || []).forEach(function (x) { m[x.symbol] = +x.fundingRate; });
+        return m;
+      });
     },
     wsUrl: function (sym) { return 'wss://stream.bybit.com/v5/public/linear'; },
     wsSub: function (sym) {
@@ -251,11 +287,54 @@
     };
   }
 
+  /**
+   * 批次抓多個幣種的 K 線。限制並行數，避免觸發交易所的頻率限制。
+   * 任何一個幣失敗不會中斷整批，該幣標成 null。
+   */
+  function klinesBatch(symbols, tf, limit, opts) {
+    opts = opts || {};
+    var concurrency = opts.concurrency || 4;
+    var onProgress = opts.onProgress;
+    var out = {}, idx = 0, done = 0;
+
+    function worker() {
+      if (idx >= symbols.length) return Promise.resolve();
+      var sym = symbols[idx++];
+      return withFallback('klines', [sym, tf, limit])
+        .then(function (k) { out[sym] = k; })
+        .catch(function () { out[sym] = null; })
+        .then(function () {
+          done++;
+          if (onProgress) onProgress(done, symbols.length);
+          return worker();
+        });
+    }
+    var workers = [];
+    for (var i = 0; i < Math.min(concurrency, symbols.length); i++) workers.push(worker());
+    return Promise.all(workers).then(function () { return out; });
+  }
+
+  /** 回測要的：4H + 日線兩段歷史，日線要夠長才湊得出 EMA200 */
+  function history(sym, opts) {
+    opts = opts || {};
+    return Promise.all([
+      withFallback('klines', [sym, '4h', opts.bars4h || 1500]),
+      withFallback('klines', [sym, '1d', opts.barsD || 1000]),
+      withFallback('filters', [sym]).catch(function () { return null; })
+    ]).then(function (r) {
+      return { k4: r[0], d1: r[1], filters: r[2], source: active.name };
+    });
+  }
+
   root.DATA = {
     sources: SOURCES,
     activeName: function () { return active.name; },
     snapshot: snapshot,
     livePrice: livePrice,
+    klinesBatch: klinesBatch,
+    history: history,
+    allTickers: function () { return withFallback('allTickers', []); },
+    allFunding: function () { return withFallback('allFunding', []); },
     _fetchJSON: fetchJSON
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
