@@ -28,6 +28,18 @@
     return Number((n * step).toFixed(dec));
   }
 
+  /**
+   * 把數量無條件捨去到交易所允許的最小跳動單位。
+   * 部位大小一律用「捨去」—— 進位會讓實際風險超過你設定的預算。
+   * 捨去後若不足最小下單量，呼叫端要自己決定是頂上去還是放棄。
+   */
+  function floorToStep(qty, step) {
+    if (!isNum(step) || step <= 0) return qty;
+    var n = Math.floor(qty / step + EPS);
+    var dec = decimalsOf(step);
+    return Number((n * step).toFixed(dec));
+  }
+
   function decimalsOf(step) {
     var s = String(step);
     if (s.indexOf('e-') >= 0) return parseInt(s.split('e-')[1], 10);
@@ -216,6 +228,7 @@
     DEFAULT_MMR: DEFAULT_MMR,
     DEFAULT_FILTERS: DEFAULT_FILTERS,
     ceilToStep: ceilToStep,
+    floorToStep: floorToStep,
     liqPrice: liqPrice,
     inspectPosition: inspectPosition,
     sizeFromRisk: sizeFromRisk,

@@ -41,7 +41,7 @@
       filters: opts.filters
     });
 
-    var qty = R.ceilToStep(wantQty, opts.filters.stepSize);
+    var qty = R.floorToStep(wantQty, opts.filters.stepSize);
     var forced = false;
     if (qty < feas.minQty) { qty = feas.minQty; forced = true; }
 

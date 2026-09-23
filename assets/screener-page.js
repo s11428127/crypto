@@ -159,7 +159,8 @@
         '<td style="color:var(--safe)">' + (p ? px(p.targets[1].price) : '—') + '</td>' +
         '<td style="color:var(--short)">−' + (p ? usd(p.riskUsd) : '—') + '</td>' +
         '<td style="color:var(--long)">+' + (p ? usd(p.targets[0].usd) : '—') + '</td>' +
-        '<td>' + (p ? p.leverage.toFixed(2) + 'x' : '—') + '</td>' +
+        '<td>' + (p ? usd(p.notional) : '—') + '</td>' +
+        '<td>' + (p ? p.exchangeLeverage + 'x' : '—') + '</td>' +
         '<td class="' + dirCls(r.trend1d) + '">' + dirText(r.trend1d) + '</td>' +
         '<td class="' + dirCls(r.trend4h) + '">' + dirText(r.trend4h) + '</td>' +
         '<td>' + (isNum(r.relStrength) ? pct(r.relStrength) : '—') + '</td>' +
@@ -169,7 +170,7 @@
     }).join('');
     return '<table class="tbl"><thead><tr>' +
       '<th>幣</th><th>分數</th><th>可行性</th><th>進場</th><th>止損</th><th>TP1</th><th>TP2</th>' +
-      '<th>虧</th><th>賺(TP1)</th><th>槓桿</th>' +
+      '<th>虧</th><th>賺(TP1)</th><th>名目</th><th>設定槓桿</th>' +
       '<th>1D</th><th>4H</th><th>對BTC</th><th>RSI</th><th>費率</th><th>量</th>' +
       '</tr></thead><tbody>' + body + '</tbody></table>';
   }
@@ -203,11 +204,18 @@
         '<div><div class="k">停損會虧</div><div class="v" style="color:var(--short)">−' +
           usd(p.riskUsd) + '</div><div class="s">本金的 ' + p.riskPctActual.toFixed(2) + '%</div></div>' +
         '<div><div class="k">下單數量</div><div class="v">' + p.qty + '</div>' +
-          '<div class="s">名目 ' + usd(p.notional) + '</div></div>' +
-        '<div><div class="k">槓桿</div><div class="v">' + p.leverage.toFixed(2) + 'x</div>' +
-          '<div class="s">算出來的，不是設定值</div></div>' +
-        '<div><div class="k">爆倉價</div><div class="v" style="color:var(--danger)">' +
-          px(p.liqPrice) + '</div></div>' +
+          '<div class="s">這欄直接填進交易所</div></div>' +
+        '<div><div class="k">部位名目</div><div class="v">' + usd(p.notional) + '</div>' +
+          '<div class="s">本金的 ' + (p.leverage * 100).toFixed(0) + '%</div></div>' +
+        '<div><div class="k">設定槓桿</div><div class="v">' + p.exchangeLeverage + 'x</div>' +
+          '<div class="s">交易所最低只能設 1x</div></div>' +
+        '<div><div class="k">佔用保證金</div><div class="v">' + usd(p.marginUsed) + '</div>' +
+          '<div class="s">剩下的本金閒置</div></div>' +
+        '<div><div class="k">爆倉價</div><div class="v" style="color:' +
+          (p.liqFree ? 'var(--safe)' : 'var(--danger)') + '">' +
+          (p.liqFree ? '不會爆倉' : px(p.liqPrice)) + '</div>' +
+          '<div class="s">' + (p.liqFree ? '1x 做多，價格歸零才會爆'
+                                         : '依 ' + p.exchangeLeverage + 'x 逐倉計算') + '</div></div>' +
         '<div><div class="k">來回手續費</div><div class="v">' + usd(p.feeUsd, 3) + '</div>' +
           '<div class="s">' + (isNum(p.feeR) ? p.feeR.toFixed(2) + ' R' : '—') + '</div></div>' +
         '</div>';

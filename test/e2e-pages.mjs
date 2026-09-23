@@ -142,13 +142,16 @@ for (const w of [320, 390, 1180]) {
   if (longRows + shortRows > 0) {
     const target = longRows > 0 ? '#longs tbody tr' : '#shorts tbody tr';
     const cells = await page.locator(target).first().locator('td').allInnerTexts();
-    const [, , feas, entry, stop, tp1, tp2, loss, win, lev] = cells;
+    const [, , feas, entry, stop, tp1, tp2, loss, win, notional, lev] = cells;
     if (!/可做|風險被頂高|超過槓桿上限|風險過大/.test(feas)) bad.push('可行性欄位不對: ' + feas);
     if (!/[\d,]/.test(entry)) bad.push('沒有進場價: ' + entry);
     if (!/[\d,]/.test(stop)) bad.push('沒有止損價: ' + stop);
     if (!/^−\$[\d.,]+$/.test(loss)) bad.push('沒有顯示會虧幾 U: ' + loss);
     if (!/^\+\$[\d.,]+$/.test(win)) bad.push('沒有顯示會賺幾 U: ' + win);
-    if (!/x$/.test(lev)) bad.push('沒有顯示槓桿: ' + lev);
+    if (!/^\$[\d.,]+$/.test(notional)) bad.push('沒有顯示名目: ' + notional);
+    // 交易所最低只能設 1 倍，這欄永遠不該出現 0.xx
+    if (!/^\d+x$/.test(lev)) bad.push('設定槓桿必須是整數倍率: ' + lev);
+    if (parseInt(lev, 10) < 1) bad.push('設定槓桿不該小於 1x: ' + lev);
 
     // TP1 的獲利金額必須是停損金額的 1.5 倍
     const lossN = parseFloat(loss.replace(/[−$,]/g, ''));

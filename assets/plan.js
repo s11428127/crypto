@@ -214,8 +214,8 @@
    *
    * 部位大小的決定順序（順序很重要）：
    *   1. 依風險% 算出理想數量
-   *   2. 進位到交易所的最小跳動單位
-   *   3. 不足最小下單量 → 頂上去（風險會被迫變大）
+   *   2. **捨去**到交易所的最小跳動單位（進位會讓實際風險超出預算）
+   *   3. 不足最小下單量 → 頂上去（風險會被迫變大，標記 forcedUp）
    *   4. 名目超過槓桿上限 → 這筆做不起來，標記 blockedBy
    */
   function sizedPlan(opts) {
@@ -232,15 +232,18 @@
     var st = stopLevel(side, entry, swing, atr, opts.stopCfg);
     var stopDist = st.dist;
 
-    // 理想數量 → 進位 → 頂到最小可下單
+    // 理想數量 → 捨去 → 不足最小可下單才頂上去
     var wantQty = (equity * riskPct / 100) / stopDist;
-    var qty = R.ceilToStep(wantQty, filters.stepSize);
+    var qty = R.floorToStep(wantQty, filters.stepSize);
     var feas = R.feasibility({ equity: equity, entry: entry, stop: st.price, filters: filters });
     var forcedUp = false;
     if (qty < feas.minQty) { qty = feas.minQty; forcedUp = true; }
 
     var notional = qty * entry;
     var leverage = notional / equity;
+    // 交易所的槓桿最低只能設 1 倍。名目小於本金時設 1 倍就好，
+    // 保證金會自動只佔掉名目那麼多，剩下的本金閒置。
+    var exchangeLeverage = Math.max(1, Math.ceil(leverage - 1e-9));
     var blockedBy = null;
     if (notional > equity * maxLev + 1e-9) blockedBy = 'leverageCap';
 
@@ -252,7 +255,10 @@
       side: side, entry: entry,
       stop: st.price, stopDist: stopDist, stopDistPct: stopDist / entry * 100,
       stopClamped: st.clamped,
-      qty: qty, notional: notional, leverage: leverage,
+      qty: qty, notional: notional,
+      leverage: leverage,                    // 名目 ÷ 本金，可能小於 1
+      exchangeLeverage: exchangeLeverage,    // 實際要在交易所設定的整數倍率
+      marginUsed: notional / exchangeLeverage,
       riskUsd: riskUsd, riskPctActual: riskUsd / equity * 100,
       forcedUp: forcedUp, blockedBy: blockedBy, feasible: blockedBy === null,
       minQty: feas.minQty, minNotional: feas.minNotional,
@@ -265,13 +271,16 @@
       })
     };
 
-    // 爆倉價用「實際會用到的槓桿」算，不是使用者設的上限
-    if (leverage > 0) {
-      out.liqPrice = R.liqPrice({ entry: entry, leverage: leverage, side: side, mmr: opts.mmr });
-      var lq = R.liqBeforeStop({ entry: entry, leverage: leverage, side: side,
-                                 stop: st.price, mmr: opts.mmr });
-      out.liqBeforeStop = lq ? lq.liquidatedFirst : null;
-    }
+    // 爆倉價要用「實際會在交易所設定的倍率」算。
+    // 用 notional/equity 這個比例算是錯的：交易所最低只能設 1x，
+    // 比例小於 1 的空單會算出離譜的遠（例如 6.5 倍距離，實際只有 2 倍）。
+    out.liqPrice = R.liqPrice({ entry: entry, leverage: exchangeLeverage,
+                                side: side, mmr: opts.mmr });
+    var lq = R.liqBeforeStop({ entry: entry, leverage: exchangeLeverage, side: side,
+                               stop: st.price, mmr: opts.mmr });
+    out.liqBeforeStop = lq ? lq.liquidatedFirst : null;
+    // 做多在 1x 下價格要歸零才會爆倉，實務上等於不會爆
+    out.liqFree = side === 'long' && exchangeLeverage <= 1;
 
     var fee = R.feeInR({ notional: notional, riskAmt: riskUsd });
     if (fee) { out.feeUsd = fee.feeUsd; out.feeR = fee.feeR; }

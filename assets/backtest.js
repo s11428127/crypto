@@ -213,7 +213,7 @@
 
         // 交易所最小下單量：$100 的帳戶常常會卡在這裡
         var feas = R.feasibility({ equity: equity, entry: entry, stop: st.price, filters: filters });
-        var qty = R.ceilToStep(size.qty, filters.stepSize);
+        var qty = R.floorToStep(size.qty, filters.stepSize);
         if (qty < feas.minQty) qty = feas.minQty;
         var notional = qty * entry;
 
