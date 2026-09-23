@@ -402,6 +402,34 @@ for (const w of [320, 390, 1180]) {
   await ctx.close();
 }
 
+/* 持倉的現價要自己跳，不能停在載入那一刻（WebSocket 連不上時退回輪詢） */
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+  const page = await ctx.newPage();
+  const errs = []; collectErrors(page, errs);
+  let n = 0;
+  await page.route('**/bot/state.json*', r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(fakeState(3)) }));
+  await page.route('**/bot/backtest.json*', r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(fakeBacktest()) }));
+  await page.route('**/fapi/v1/ticker/24hr*', r => r.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ lastPrice: String(3000 + ++n), priceChangePercent: '0', highPrice: '1', lowPrice: '1',
+                           volume: '1', quoteVolume: '1' }) }));
+  await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => /更新於/.test(document.querySelector('#positions').innerText),
+    { timeout: 8000 }).catch(() => {});
+  const bad = [];
+  const cell = () => page.locator('#positions tbody tr td').nth(3).innerText();
+  const a = await cell();
+  await page.waitForTimeout(6500);
+  const b = await cell();
+  if (a === b) bad.push('現價 6.5 秒都沒變：' + a);
+  if (!/更新於 \d\d:\d\d:\d\d/.test(await page.locator('#positions').innerText())) bad.push('沒有顯示現價更新時間');
+  if (errs.length) bad.push('console: ' + errs.join(' | '));
+  report('bot.html 現價會自己更新', bad);
+  await ctx.close();
+}
+
 /* 還沒有狀態檔時不能白畫面 */
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });

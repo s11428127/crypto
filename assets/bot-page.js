@@ -45,12 +45,46 @@
     liveBusy = true;
     Promise.all(syms.map(function (sym) {
       return DATA.ticker(sym)
-        .then(function (t) { if (t && isNum(t.last) && t.last > 0) live[sym] = { price: t.last, at: Date.now() }; })
+        .then(function (t) {
+          // WebSocket 在 3 秒內剛更新過就不要用 24hr ticker 蓋掉（ticker 可能慢一點）
+          if (t && isNum(t.last) && t.last > 0 && !(live[sym] && Date.now() - live[sym].at < 3000)) {
+            live[sym] = { price: t.last, at: Date.now() };
+          }
+        })
         .catch(function (e) { liveErr = e.message; });
     })).then(function () {
       liveBusy = false;
       renderStats(); renderPositions(); drawCurve();
     });
+  }
+
+  /* 持倉的幣各開一條 WebSocket，成交一筆就更新一次（跟交易所 App 一樣會跳）。
+   * WebSocket 連不上時 DATA.livePrice 會自己退回每 5 秒輪詢；上面的 10 秒輪詢是再保險一層。 */
+  var streams = {};        // sym → stop()
+  var renderQ = null;
+  function scheduleLiveRender() {
+    if (renderQ) return;
+    renderQ = setTimeout(function () { renderQ = null; renderStats(); renderPositions(); drawCurve(); }, 700);
+  }
+  function syncStreams() {
+    if (!window.DATA || !DATA.livePrice) return;
+    var want = openSyms();
+    Object.keys(streams).forEach(function (sym) {
+      if (want.indexOf(sym) < 0) { streams[sym](); delete streams[sym]; }
+    });
+    want.forEach(function (sym) {
+      if (streams[sym]) return;
+      streams[sym] = DATA.livePrice(sym, function (p) {
+        if (!isNum(p) || p <= 0) return;
+        live[sym] = { price: p, at: Date.now() };
+        liveErr = '';
+        scheduleLiveRender();
+      });
+    });
+  }
+  function clock(ts) {
+    var d = new Date(ts), z = function (n) { return (n < 10 ? '0' : '') + n; };
+    return z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds());
   }
 
   /** 全部持倉都有現價時，回傳含浮動損益的權益；少一個就回 null（不要拿一半的數字騙人） */
@@ -224,7 +258,14 @@
       return;
     }
     var fee = state.config.feeRate;
+    var lastAt = 0;
+    keys.forEach(function (k) { if (live[k] && live[k].at > lastAt) lastAt = live[k].at; });
     $('positions').innerHTML =
+      '<div class="hint" style="margin:0 0 6px">' +
+        (lastAt ? '現價更新於 <b style="font-variant-numeric:tabular-nums">' + clock(lastAt) + '</b> · ' +
+                  (window.DATA ? DATA.activeName() : '') + ' 公開行情'
+                : liveErr ? '抓不到現價（' + liveErr + '）' : '抓現價中…') +
+      '</div>' +
       '<table class="tbl"><thead><tr><th>幣</th><th>方向</th><th>進場</th><th>現價</th><th>浮動損益</th><th>R</th>' +
       '<th>止損</th><th>距止損</th><th>名目</th><th>風險</th><th>設定槓桿</th><th>開倉時間</th></tr></thead><tbody>' +
       keys.map(function (k) {
@@ -478,6 +519,7 @@
     $('load-status').textContent = '已載入（' + from + '）';
     renderAll();
     pollLive();
+    syncStreams();
   }
 
   function load() {
