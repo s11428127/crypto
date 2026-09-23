@@ -1,7 +1,6 @@
 {
- "version": 1,
+ "version": 2,
  "config": {
-  "symbol": "BTCUSDT",
   "startEquity": 100,
   "riskPct": 1,
   "maxLeverage": 5,
@@ -12,41 +11,115 @@
    3
   ],
   "filters": {
-   "minQty": 0.001,
-   "stepSize": 0.001,
-   "minNotional": 100
-  }
+   "BTCUSDT": {
+    "minQty": 0.001,
+    "stepSize": 0.001,
+    "minNotional": 100
+   },
+   "ETHUSDT": {
+    "minQty": 0.001,
+    "stepSize": 0.001,
+    "minNotional": 20
+   },
+   "*": {
+    "minQty": 0,
+    "stepSize": 0,
+    "minNotional": 5
+   }
+  },
+  "symbols": [
+   "BTCUSDT",
+   "ETHUSDT",
+   "SOLUSDT",
+   "XRPUSDT",
+   "DOGEUSDT",
+   "ADAUSDT",
+   "LINKUSDT",
+   "AVAXUSDT",
+   "LTCUSDT",
+   "DOTUSDT"
+  ],
+  "maxRiskPct": 5,
+  "maxPositions": 3
  },
  "equity": 100,
- "position": null,
  "trades": [],
  "curve": [
   {
    "t": 1790150942916,
    "equity": 100,
-   "hasPosition": false
+   "hasPosition": false,
+   "open": 0
   },
   {
    "t": 1790162631768,
    "equity": 100,
-   "hasPosition": false
+   "hasPosition": false,
+   "open": 0
+  },
+  {
+   "t": 1790166626143,
+   "equity": 100,
+   "open": 0
   }
  ],
  "feesPaid": 0,
  "fundingPaid": 0,
- "ticks": 2,
- "lastTick": 1790162631768,
+ "ticks": 3,
+ "lastTick": 1790166626143,
  "createdAt": 1790150941924,
- "notes": [
-  {
-   "t": 1790162631768,
-   "kind": "idle",
-   "text": "15m 仍在回落，等止跌再進，不要接刀"
+ "notes": [],
+ "positions": {},
+ "status": {
+  "BTCUSDT": {
+   "t": 1790166613618,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
   },
-  {
-   "t": 1790150942916,
-   "kind": "idle",
-   "text": "15m 橫盤，等突破確認"
+  "ETHUSDT": {
+   "t": 1790166614980,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
+  },
+  "SOLUSDT": {
+   "t": 1790166616361,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
+  },
+  "XRPUSDT": {
+   "t": 1790166617725,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
+  },
+  "DOGEUSDT": {
+   "t": 1790166619103,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
+  },
+  "ADAUSDT": {
+   "t": 1790166620672,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
+  },
+  "LINKUSDT": {
+   "t": 1790166622070,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
+  },
+  "AVAXUSDT": {
+   "t": 1790166623419,
+   "type": "wait",
+   "reason": "15m 橫盤，等突破確認"
+  },
+  "LTCUSDT": {
+   "t": 1790166624785,
+   "type": "wait",
+   "reason": "15m 仍在回落，等止跌再進，不要接刀"
+  },
+  "DOTUSDT": {
+   "t": 1790166626142,
+   "type": "wait",
+   "reason": "15m 橫盤，等突破確認"
   }
- ]
+ }
 }
