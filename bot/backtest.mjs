@@ -32,6 +32,13 @@ const f = (v, d = 2) => Number.isFinite(v) ? v.toFixed(d) : '—';
 const day = t => new Date(t).toISOString().slice(0, 10);
 const short = s => s.replace(/USDT$/, '');
 
+function sideStats(trades) {
+  if (!trades.length) return { n: 0 };
+  const w = trades.filter(t => t.pnl > 0).length;
+  const sumR = trades.reduce((a, t) => a + (Number.isFinite(t.r) ? t.r : 0), 0);
+  return { n: trades.length, winRate: w / trades.length * 100, avgR: sumR / trades.length, totalR: sumR };
+}
+
 function pooled(trades, equity0) {
   const n = trades.length;
   if (!n) return { n: 0 };
@@ -72,7 +79,14 @@ async function main() {
       });
       if (r.error) { rows.push({ symbol: sym, error: r.error }); continue; }
       r.trades.forEach(t => allTrades.push(Object.assign({ symbol: sym }, t)));
+      // 基準：同一段期間「什麼都不做、單純買進抱著」會怎樣。
+      // 策略賺錢但輸給抱著，或者只有多單在賺，代表賺的是行情不是規則。
+      const i0 = Math.max(0, h.k4.findIndex(b => b.t >= r.from));
+      const buyHoldPct = (h.k4[h.k4.length - 1].c / h.k4[i0].c - 1) * 100;
       rows.push({
+        buyHoldPct,
+        long: sideStats(r.trades.filter(t => t.side === 'long')),
+        short: sideStats(r.trades.filter(t => t.side === 'short')),
         symbol: sym, source: h.source, bars4h: h.k4.length, barsD: h.d1.length,
         from: r.from, to: r.to, n: r.n, winRate: r.winRate, avgR: r.avgR, totalR: r.totalR,
         returnPct: r.returnPct, maxDD: r.maxDD, profitFactor: r.profitFactor,
@@ -94,7 +108,11 @@ async function main() {
     rule: '日線 + 4H 同向才進場（回測沒有 15m 時機過濾）；止損 = 4H 結構外 0.25 ATR，夾在 0.8～2.5 ATR；止盈 1.5R 全出',
     params: { startEquity: config.startEquity, riskPct: config.riskPct, maxLeverage: config.maxLeverage,
               feeRate: config.feeRate, fundingPer8h: config.fundingPer8h },
-    pooled: pool,
+    pooled: Object.assign(pool, {
+      long: sideStats(allTrades.filter(t => t.side === 'long')),
+      short: sideStats(allTrades.filter(t => t.side === 'short')),
+      avgBuyHoldPct: ok.length ? ok.reduce((a, r) => a + r.buyHoldPct, 0) / ok.length : null
+    }),
     symbols: rows
   };
 
@@ -103,19 +121,25 @@ async function main() {
   L.push('═'.repeat(78));
   L.push(`歷史回測　來源 ${out.source || '—'}　成功 ${ok.length}/${symbols.length} 個幣　每幣起始 $${config.startEquity}、單筆風險 ${config.riskPct}%`);
   L.push('═'.repeat(78));
-  L.push('幣     期間                     筆數  勝率    平均R    報酬     最大回撤  獲利因子');
+  L.push('幣     期間                     筆數  勝率    平均R    報酬     最大回撤  獲利因子  買進持有  多單R    空單R');
   rows.forEach(r => {
     if (r.error) { L.push(`${short(r.symbol).padEnd(6)} ✗ ${r.error}`); return; }
     L.push(`${short(r.symbol).padEnd(6)} ${day(r.from)}~${day(r.to)}  ${String(r.n).padStart(4)}  ` +
       `${(r.n ? f(r.winRate, 1) + '%' : '—').padStart(6)}  ${(r.n ? (r.avgR >= 0 ? '+' : '') + f(r.avgR, 3) : '—').padStart(7)}  ` +
       `${((r.returnPct >= 0 ? '+' : '') + f(r.returnPct, 1) + '%').padStart(7)}  ${(f(r.maxDD, 1) + '%').padStart(8)}  ` +
-      `${(r.profitFactor === null ? (r.n ? '∞' : '—') : f(r.profitFactor)).padStart(7)}`);
+      `${(r.profitFactor === null ? (r.n ? '∞' : '—') : f(r.profitFactor)).padStart(7)}  ` +
+      `${((r.buyHoldPct >= 0 ? '+' : '') + f(r.buyHoldPct, 1) + '%').padStart(8)}  ` +
+      `${(r.long.n ? (r.long.avgR >= 0 ? '+' : '') + f(r.long.avgR, 2) + '×' + r.long.n : '—').padStart(8)} ` +
+      `${(r.short.n ? (r.short.avgR >= 0 ? '+' : '') + f(r.short.avgR, 2) + '×' + r.short.n : '—').padStart(8)}`);
   });
   L.push('─'.repeat(78));
   if (pool.n) {
     L.push(`合計 ${pool.n} 筆　勝率 ${f(pool.winRate, 1)}%　平均 ${pool.avgR >= 0 ? '+' : ''}${f(pool.avgR, 3)} R　` +
       `總計 ${pool.totalR >= 0 ? '+' : ''}${f(pool.totalR, 1)} R　獲利因子 ${pool.profitFactor === null ? '∞' : f(pool.profitFactor)}　` +
       `最長連敗 ${pool.maxLossStreak}　R 曲線最大回撤 ${f(pool.maxDDR, 1)} R`);
+    const pl = out.pooled.long, ps = out.pooled.short;
+    L.push(`多單 ${pl.n} 筆 平均 ${pl.n ? f(pl.avgR, 3) : '—'} R　空單 ${ps.n} 筆 平均 ${ps.n ? f(ps.avgR, 3) : '—'} R　` +
+      `同期買進持有平均 ${f(out.pooled.avgBuyHoldPct, 1)}%`);
   } else {
     L.push('合計 0 筆');
   }

@@ -267,6 +267,12 @@
          p.profitFactor > 1 ? 'safe' : p.n ? 'danger' : '') +
       kv('最長連敗', p.n ? p.maxLossStreak + ' 筆' : '—', p.maxLossStreak >= 8 ? 'danger' : '') +
       kv('R 曲線回撤', p.n ? p.maxDDR.toFixed(1) + ' R' : '—', '') +
+      (p.long ? kv('多單', p.long.n ? (p.long.avgR >= 0 ? '+' : '') + p.long.avgR.toFixed(3) + ' R' : '—',
+                   p.long.avgR > 0 ? 'safe' : p.long.n ? 'danger' : '', p.long.n + ' 筆平均') : '') +
+      (p.short ? kv('空單', p.short.n ? (p.short.avgR >= 0 ? '+' : '') + p.short.avgR.toFixed(3) + ' R' : '—',
+                    p.short.avgR > 0 ? 'safe' : p.short.n ? 'danger' : '', p.short.n + ' 筆平均') : '') +
+      (isNum(p.avgBuyHoldPct) ? kv('同期買進持有', (p.avgBuyHoldPct >= 0 ? '+' : '') + pct(p.avgBuyHoldPct),
+                                   p.avgBuyHoldPct >= 0 ? 'safe' : 'danger', '各幣平均，什麼都不做的基準') : '') +
       kv('產生時間', when(backtest.generatedAt), '', backtest.source || '');
 
     var w = [];
@@ -274,6 +280,13 @@
       w.push(alertBox('info', '這段期間一筆訊號都沒有', '規則太嚴或資料不夠長。'));
     } else if (p.n < 30) {
       w.push(alertBox('warn', '樣本還不夠', '只有 ' + p.n + ' 筆，勝率的誤差很大，別急著下結論。'));
+    }
+    // 只有多單在賺、又剛好是上漲行情 → 賺的是行情，不是規則
+    if (p.long && p.short && p.long.n >= 10 && p.short.n >= 10 && p.long.avgR > 0 && p.short.avgR < 0 &&
+        isNum(p.avgBuyHoldPct) && p.avgBuyHoldPct > 0) {
+      w.push(alertBox('warn', '多單賺、空單賠，而且這段期間整體在漲',
+        '這很可能是行情在幫忙，不是規則有優勢。在下跌或盤整的行情裡，同一套多單規則未必還能賺。' +
+        '要確認得用涵蓋多頭、空頭、盤整的更長歷史再測一次。'));
     }
     if (p.n && p.winRate >= 90) {
       w.push(alertBox('danger', '勝率高得不合理', '真實市場不會這樣，先懷疑程式或資料，不要照著下真錢。'));
@@ -290,10 +303,10 @@
     var rows = backtest.symbols || [];
     $('bt-table').innerHTML =
       '<table class="tbl"><thead><tr><th>幣</th><th>筆數</th><th>勝率</th><th>平均 R</th>' +
-      '<th>報酬</th><th>最大回撤</th><th>獲利因子</th><th>期間</th></tr></thead><tbody>' +
+      '<th>報酬</th><th>買進持有</th><th>多單 R</th><th>空單 R</th><th>最大回撤</th><th>獲利因子</th><th>期間</th></tr></thead><tbody>' +
       rows.map(function (r) {
         if (r.error) {
-          return '<tr><td>' + short(r.symbol) + '</td><td colspan="7" style="text-align:left;color:var(--short);' +
+          return '<tr><td>' + short(r.symbol) + '</td><td colspan="10" style="text-align:left;color:var(--short);' +
                  'white-space:normal;font-family:inherit">' + r.error + '</td></tr>';
         }
         var c = r.avgR > 0 ? 'var(--long)' : r.avgR < 0 ? 'var(--short)' : 'inherit';
@@ -303,10 +316,20 @@
           '<td style="color:' + c + '">' + (r.n ? (r.avgR >= 0 ? '+' : '') + r.avgR.toFixed(3) : '—') + '</td>' +
           '<td style="color:' + (r.returnPct >= 0 ? 'var(--long)' : 'var(--short)') + '">' +
             (r.returnPct >= 0 ? '+' : '') + pct(r.returnPct) + '</td>' +
+          '<td>' + (isNum(r.buyHoldPct) ? (r.buyHoldPct >= 0 ? '+' : '') + pct(r.buyHoldPct) : '—') + '</td>' +
+          '<td>' + sideCell(r.long) + '</td>' +
+          '<td>' + sideCell(r.short) + '</td>' +
           '<td>' + pct(r.maxDD) + '</td>' +
           '<td>' + (r.profitFactor === null ? (r.n ? '∞' : '—') : f(r.profitFactor)) + '</td>' +
           '<td>' + when(r.from).slice(0, 10) + '~' + when(r.to).slice(5, 10) + '</td></tr>';
       }).join('') + '</tbody></table>';
+  }
+
+  function sideCell(x) {
+    if (!x || !x.n) return '—';
+    var c = x.avgR > 0 ? 'var(--long)' : 'var(--short)';
+    return '<span style="color:' + c + '">' + (x.avgR >= 0 ? '+' : '') + x.avgR.toFixed(2) + '</span>' +
+           '<span style="color:var(--text-dim)">×' + x.n + '</span>';
   }
 
   function loadBacktest() {

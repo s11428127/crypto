@@ -310,7 +310,8 @@ function fakeBacktest() {
   return {
     generatedAt: Date.now() - 3600e3, source: 'Kraken',
     pooled: { n: 60, winRate: 40, avgR: -0.047, totalR: -2.8, profitFactor: 0.91,
-              maxLossStreak: 9, maxDDR: 12.5 },
+              maxLossStreak: 9, maxDDR: 12.5,
+              long: { n: 36, avgR: 0.24 }, short: { n: 24, avgR: -0.5 }, avgBuyHoldPct: 8.5 },
     symbols: [mkRow('BTCUSDT', 27, 29.6, -0.376), mkRow('AVAXUSDT', 17, 52.9, 0.309),
               { symbol: 'DOTUSDT', error: 'EQuery:Unknown asset pair' }]
   };
@@ -348,6 +349,10 @@ for (const w of [320, 390, 1180]) {
   if (btRows !== 3) bad.push('回測表應該有 3 列，實際 ' + btRows);
   if (!/Unknown asset pair/.test(await page.locator('#bt-table').innerText())) {
     bad.push('回測失敗的幣沒有顯示原因');
+  }
+  // 多單賺、空單賠、行情在漲 → 要提醒「可能是行情在幫忙」
+  if (!/行情在幫忙/.test(await page.locator('#bt-warn').innerText())) {
+    bad.push('多賺空賠又逢上漲時，沒有提醒可能是行情因素');
   }
 
   const tradeRows = await page.locator('#trades tbody tr').count();
