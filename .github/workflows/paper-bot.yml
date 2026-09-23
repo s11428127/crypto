@@ -10,7 +10,7 @@ permissions:
   contents: write             # 要把狀態檔寫回 repo
 
 concurrency:
-  group: paper-bot            # 同時只跑一個，避免兩輪互相覆蓋狀態
+  group: bot-repo-write       # 同時只跑一個（和歷史回測共用），避免互相覆蓋
   cancel-in-progress: false
 
 jobs:

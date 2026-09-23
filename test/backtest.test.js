@@ -133,7 +133,10 @@ t('每筆的損益與權益變化一致', () => {
   let eq = 100;
   // 只檢查損益總和與最終權益的關係（資金費另外扣，所以用容差）
   const sumPnl = r.trades.reduce((a, x) => a + x.pnl, 0);
-  near(r.equity, 100 + sumPnl - r.fundingPaid, 1e-6);
+  // 資金費已經算進每一筆的損益，權益必須剛好等於起始 + 損益總和
+  near(r.equity, 100 + sumPnl, 1e-6);
+  const fundInTrades = r.trades.reduce((a, x) => a + x.funding, 0);
+  near(fundInTrades, r.fundingPaid, 1e-9);
 });
 t('輸掉的交易 R 值為負、贏的為正', () => {
   const r = B.run(mk4h(700, 20000, 45, 260, 11), { equity: 100, riskPct: 1 });

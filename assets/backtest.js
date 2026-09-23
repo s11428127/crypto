@@ -139,6 +139,7 @@
           var fcost = pos.notional * fund8h;
           fundingPaid += fcost;
           equity -= fcost;
+          pos.funding += fcost;       // 記在這一筆頭上，不然 R 會高估（抱越久高估越多）
         }
         var hitStop, hitTp;
         if (pos.side === 'long') {
@@ -164,8 +165,9 @@
             t: pos.t, exitT: bar.t, side: pos.side,
             entry: pos.entry, stop: pos.stop, tp: pos.tp, exit: exitPx,
             qty: pos.qty, notional: pos.notional,
-            pnl: gross - exitFee - pos.entryFee,
-            r: (gross - exitFee - pos.entryFee) / pos.riskAmt,
+            pnl: gross - exitFee - pos.entryFee - pos.funding,
+            r: (gross - exitFee - pos.entryFee - pos.funding) / pos.riskAmt,
+            funding: pos.funding,
             why: why, equityAfter: equity
           });
           pos = null;
@@ -234,7 +236,7 @@
           t: next.t, side: b.side, entry: entry, stop: st.price,
           tp: tps[0].price,          // 單一目標：TP1，簡化成「全出」
           qty: qty, notional: notional,
-          riskAmt: realRisk, entryFee: entryFee
+          riskAmt: realRisk, entryFee: entryFee, funding: 0
         };
       }
     }
@@ -252,7 +254,8 @@
         t: pos.t, exitT: k4[k4.length - 1].t, side: pos.side,
         entry: pos.entry, stop: pos.stop, tp: pos.tp, exit: lastPx,
         qty: pos.qty, notional: pos.notional,
-        pnl: g - ef - pos.entryFee, r: (g - ef - pos.entryFee) / pos.riskAmt,
+        pnl: g - ef - pos.entryFee - pos.funding, r: (g - ef - pos.entryFee - pos.funding) / pos.riskAmt,
+        funding: pos.funding,
         why: 'close', equityAfter: equity
       });
     }

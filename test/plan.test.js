@@ -255,6 +255,13 @@ t('名目超過本金時，交易所槓桿進位到整數', () => {
   near(p.marginUsed, p.notional / 4, 1e-9);
 });
 
+t('止損會被算成負數時（價格與 ATR 尺度對不上）作廢，不給計畫', () => {
+  const p = P.sizedPlan({ side: 'long', price: 10, atr: 150,
+    swing: { low: 60000, high: 61000 }, equity: 100, riskPct: 1, maxLeverage: 5,
+    filters: { minQty: 0, stepSize: 0, minNotional: 5 } });
+  assert.equal(p, null);
+});
+
 t('參數不完整時回傳 null 而不是丟例外', () => {
   assert.equal(P.sizedPlan({ side: 'long', price: 0, atr: 1, equity: 50, riskPct: 1 }), null);
   assert.equal(P.sizedPlan({ side: 'long', price: 100, atr: 0, equity: 50, riskPct: 1 }), null);

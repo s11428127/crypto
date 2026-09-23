@@ -1,0 +1,43 @@
+name: 歷史回測
+
+# 手動觸發：用各幣真實的歷史 K 線，把機器人的規則逐根跑一遍。
+# 不用等模擬單慢慢累積，幾分鐘就能看到這套規則過去的表現。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bot-repo-write       # 跟模擬單機器人共用，兩個不會同時推
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 回測
+        run: node bot/backtest.mjs
+
+      - name: 把結果寫回 repo
+        run: |
+          if [ -z "$(git status --porcelain -- bot/backtest.json)" ]; then
+            echo "結果沒有變化，不提交"
+            exit 0
+          fi
+          git config user.name  "paper-bot"
+          git config user.email "noreply@anthropic.com"
+          git add bot/backtest.json
+          git commit -m "backtest: $(date -u '+%Y-%m-%d %H:%M') UTC 歷史回測結果"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i * 5))
+          done
+          echo "推送失敗" >&2
+          exit 1

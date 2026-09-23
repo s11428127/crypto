@@ -1,10 +1,19 @@
 {
-  "symbol": "BTCUSDT",
+  "symbols": [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT",
+    "ADAUSDT", "LINKUSDT", "AVAXUSDT", "LTCUSDT", "DOTUSDT"
+  ],
   "startEquity": 100,
   "riskPct": 1,
+  "maxRiskPct": 5,
+  "maxPositions": 3,
   "maxLeverage": 5,
   "feeRate": 0.00045,
   "fundingPer8h": 0.0001,
   "rMultiples": [1.5, 3],
-  "filters": { "minQty": 0.001, "stepSize": 0.001, "minNotional": 100 }
+  "filters": {
+    "BTCUSDT": { "minQty": 0.001, "stepSize": 0.001, "minNotional": 100 },
+    "ETHUSDT": { "minQty": 0.001, "stepSize": 0.001, "minNotional": 20 },
+    "*": { "minQty": 0, "stepSize": 0, "minNotional": 5 }
+  }
 }

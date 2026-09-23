@@ -109,8 +109,9 @@
     ctx.fillStyle = C('--accent') + '18';
     var segStart = null;
     c.forEach(function (p, i) {
-      if (p.hasPosition && segStart === null) segStart = i;
-      if ((!p.hasPosition || i === c.length - 1) && segStart !== null) {
+      var on = p.open > 0 || p.hasPosition;
+      if (on && segStart === null) segStart = i;
+      if ((!on || i === c.length - 1) && segStart !== null) {
         ctx.fillRect(xOf(segStart), padT, Math.max(1, xOf(i) - xOf(segStart)), ph);
         segStart = null;
       }
@@ -224,7 +225,7 @@
   /* ---------- 載入 ---------- */
   function adopt(raw, from) {
     if (!raw || typeof raw !== 'object' || !raw.config) throw new Error('不是有效的狀態檔');
-    state = raw;
+    state = BOT.migrate(raw);      // 舊版單一部位的狀態檔也能讀
     $('load-status').textContent = '已載入（' + from + '）';
     renderAll();
   }

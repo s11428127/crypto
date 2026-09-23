@@ -231,6 +231,9 @@
 
     var st = stopLevel(side, entry, swing, atr, opts.stopCfg);
     var stopDist = st.dist;
+    // 價格和 ATR 尺度對不上（例如指標跟報價來自不同的幣）時，做多的止損會被算成負數。
+    // 這種計畫不能拿去下單，直接作廢。
+    if (!(st.price > 0)) return null;
 
     // 理想數量 → 捨去 → 不足最小可下單才頂上去
     var wantQty = (equity * riskPct / 100) / stopDist;

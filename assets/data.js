@@ -239,8 +239,9 @@
     // BTCUSDT → XBTUSD（Kraken 把 BTC 叫做 XBT，而且用 USD 不是 USDT）
     pair: function (sym) {
       var b = sym.replace(/USDT$/, '').replace(/USD$/, '');
-      if (b === 'BTC') b = 'XBT';
-      return b + 'USD';
+      // Kraken 的舊代號：BTC 叫 XBT、DOGE 叫 XDG
+      var alias = { BTC: 'XBT', DOGE: 'XDG' };
+      return (alias[b] || b) + 'USD';
     },
     // 回傳的 key 可能是 XXBTZUSD 這種內部代號，取第一個非 last 的欄位
     pick: function (result) {
