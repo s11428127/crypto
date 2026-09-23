@@ -253,7 +253,7 @@
         nextFundingAt: now + EIGHT_HOURS, why: action.why
       };
       s.notes.unshift({ t: now, kind: 'open', symbol: sym,
-        text: shortName(sym) + ' ' + (p.side === 'long' ? '開多' : '開空') + ' ' + p.qty + ' @ ' + px(p.entry) +
+        text: shortName(sym) + ' ' + (p.side === 'long' ? '開多' : '開空') + ' ' + px(p.qty) + ' @ ' + px(p.entry) +
               '，止損 ' + px(p.stop) + '（風險 $' + p.riskUsd.toFixed(2) + '）' });
       Object.assign(st, { t: now, type: 'open', reason: action.why, lastBarT: action.barT });
     } else if (action.type === 'close' && held) {
