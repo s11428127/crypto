@@ -28,7 +28,9 @@ jobs:
 
       - name: 把狀態寫回 repo
         run: |
-          if git diff --quiet -- bot/state.json; then
+          # 不能用 git diff：第一輪的 state.json 是新檔，git diff 看不到未追蹤的檔案，
+          # 會誤判成「沒變化」而不提交，結果每一輪都從零開始、永遠累積不了紀錄。
+          if [ -z "$(git status --porcelain -- bot/state.json)" ]; then
             echo "狀態沒有變化，不提交"
             exit 0
           fi
