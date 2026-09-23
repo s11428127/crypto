@@ -25,14 +25,24 @@
    "t": 1790150942916,
    "equity": 100,
    "hasPosition": false
+  },
+  {
+   "t": 1790162631768,
+   "equity": 100,
+   "hasPosition": false
   }
  ],
  "feesPaid": 0,
  "fundingPaid": 0,
- "ticks": 1,
- "lastTick": 1790150942916,
+ "ticks": 2,
+ "lastTick": 1790162631768,
  "createdAt": 1790150941924,
  "notes": [
+  {
+   "t": 1790162631768,
+   "kind": "idle",
+   "text": "15m 仍在回落，等止跌再進，不要接刀"
+  },
   {
    "t": 1790150942916,
    "kind": "idle",
