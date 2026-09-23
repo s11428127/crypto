@@ -35,12 +35,18 @@
   <div class="sec">
     <h2>歷史回測（真實 K 線）</h2>
     <p class="hint">
-      不用等模擬單慢慢累積：用各幣過去的真實 4H 與日線，把同一套規則逐根跑一遍。
-      每個幣各用一個 $100 的獨立帳戶；回測只有「日線 + 4H」定方向，沒有 15m 時機過濾。
+      不用等模擬單慢慢累積：用各幣過去幾年的真實 4H 與日線，把規則逐根跑一遍。
+      每個幣各用一個 $100 的獨立帳戶，已扣手續費與資金費。
     </p>
+    <div class="tbl-wrap" id="bt-compare"></div>
+    <p class="hint" id="bt-rule" style="margin-top:10px"></p>
     <div class="kv" id="bt-pool"></div>
     <div id="bt-warn"></div>
-    <div class="tbl-wrap" id="bt-table" style="margin-top:12px"></div>
+    <h3>按季拆分</h3>
+    <p class="hint">同一套規則在牛市、熊市、盤整的季度分別賺賠多少。只在上漲的季度賺錢，就是行情在幫忙。</p>
+    <div class="tbl-wrap" id="bt-quarters"></div>
+    <h3>各幣明細</h3>
+    <div class="tbl-wrap" id="bt-table" style="margin-top:8px"></div>
   </div>
 
   <div class="sec">

@@ -248,7 +248,56 @@
 
   /* ---------- 歷史回測 ---------- */
   var backtest = null;
+  function sgn(v, d) { return isNum(v) ? (v >= 0 ? '+' : '') + v.toFixed(d == null ? 2 : d) : '—'; }
+  function rColor(v) { return !isNum(v) ? 'inherit' : v > 0 ? 'var(--long)' : v < 0 ? 'var(--short)' : 'inherit'; }
+
+  /** 新舊規則並排 */
+  function renderCompare() {
+    var rules = backtest && backtest.rules;
+    if (!rules) { $('bt-compare').innerHTML = ''; $('bt-rule').textContent = ''; return; }
+    var keys = Object.keys(rules);
+    var rows = [
+      ['規則', function (r) { return r.name; }],
+      ['成交', function (r) { return String(r.pooled.n || 0); }],
+      ['勝率', function (r) { return r.pooled.n ? pct(r.pooled.winRate) : '—'; }],
+      ['平均每筆', function (r) { return '<span style="color:' + rColor(r.pooled.avgR) + '">' + sgn(r.pooled.avgR, 3) + ' R</span>'; }],
+      ['總計', function (r) { return '<span style="color:' + rColor(r.pooled.totalR) + '">' + sgn(r.pooled.totalR, 1) + ' R</span>'; }],
+      ['獲利因子', function (r) { var p = r.pooled; return p.profitFactor == null ? (p.n ? '∞' : '—') : f(p.profitFactor); }],
+      ['最長連敗', function (r) { return r.pooled.n ? r.pooled.maxLossStreak + ' 筆' : '—'; }],
+      ['R 曲線回撤', function (r) { return r.pooled.n ? r.pooled.maxDDR.toFixed(1) + ' R' : '—'; }],
+      ['多單', function (r) { return sideCell(r.pooled.long); }],
+      ['空單', function (r) { return sideCell(r.pooled.short); }]
+    ];
+    $('bt-compare').innerHTML =
+      '<table class="tbl"><thead><tr><th></th>' +
+      keys.map(function (k) { return '<th>' + k + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(function (row) {
+        return '<tr><td>' + row[0] + '</td>' + keys.map(function (k) {
+          return '<td style="white-space:normal">' + row[1](rules[k]) + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody></table>';
+    var v2 = rules.v2;
+    $('bt-rule').textContent = v2 ? 'v2 規則：' + v2.desc + '。' +
+      (backtest.years ? '資料期間約 ' + backtest.years + ' 年，' : '') + '來源 ' + (backtest.source || '—') + '。' : '';
+  }
+
+  function renderQuarters() {
+    var qs = backtest && backtest.quarters;
+    if (!qs || !qs.length) { $('bt-quarters').innerHTML = '<div class="empty">沒有按季資料</div>'; return; }
+    $('bt-quarters').innerHTML =
+      '<table class="tbl"><thead><tr><th>季</th><th>買進持有</th><th>v1 筆數</th><th>v1 總 R</th>' +
+      '<th>v2 筆數</th><th>v2 總 R</th></tr></thead><tbody>' +
+      qs.map(function (q) {
+        return '<tr><td>' + q.q + '</td>' +
+          '<td style="color:' + rColor(q.buyHold) + '">' + sgn(q.buyHold, 1) + '%</td>' +
+          '<td>' + q.v1.n + '</td><td style="color:' + rColor(q.v1.totalR) + '">' + sgn(q.v1.totalR, 1) + '</td>' +
+          '<td>' + q.v2.n + '</td><td style="color:' + rColor(q.v2.totalR) + '">' + sgn(q.v2.totalR, 1) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
   function renderBacktest() {
+    renderCompare();
+    renderQuarters();
     if (!backtest) {
       $('bt-pool').innerHTML = '';
       $('bt-table').innerHTML = '<div class="empty">還沒有回測結果。在 GitHub 的 Actions 分頁手動觸發「歷史回測」，幾分鐘就會跑完。</div>';

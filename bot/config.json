@@ -1,4 +1,6 @@
 {
+  "rules": "v2",
+  "allowShort": false,
   "symbols": [
     "BTCUSDT",
     "ETHUSDT",
@@ -18,10 +20,6 @@
   "maxLeverage": 5,
   "feeRate": 0.00055,
   "fundingPer8h": 0.0001,
-  "rMultiples": [
-    1.5,
-    3
-  ],
   "filters": {
     "BTCUSDT": {
       "minQty": 0.001,

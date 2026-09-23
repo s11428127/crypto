@@ -33,7 +33,8 @@ assets/backtest.js    歷史回測（嚴格不偷看未來）
 assets/sim.js         蒙地卡羅結果分布
 assets/screener.js    幣種評分與排序
 assets/journal.js     交易日誌統計
-assets/bot.js         模擬單機器人的決策引擎
+assets/strategy.js    規則 v2（回測與即時機器人共用同一份）
+assets/bot.js         模擬單機器人（多幣種、共用帳戶）
 ```
 
 排程執行器：`bot/run.mjs` + `.github/workflows/paper-bot.yml`（見 `bot/README.md`）
@@ -45,7 +46,7 @@ assets/bot.js         模擬單機器人的決策引擎
 
 ```bash
 npm run serve      # http://127.0.0.1:8099
-npm test           # 純函式層驗算（184 項）
+npm test           # 純函式層驗算（約 250 項）
 npm run test:e2e   # 瀏覽器檢查，四種寬度（需要先啟動 serve）
 ```
 

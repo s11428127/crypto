@@ -6,7 +6,8 @@
  */
 import '../assets/risk.js';
 import '../assets/indicators.js';
-import '../assets/plan.js';
+import '../assets/backtest.js';
+import '../assets/strategy.js';
 import '../assets/bot.js';
 import '../assets/data.js';
 import assert from 'node:assert/strict';
@@ -139,30 +140,28 @@ await t('全部來源都掛掉時拋出明確錯誤', async () => {
 });
 
 console.log('\n機器人整合（真實資料流程，假的 HTTP）');
-await t('從 snapshot 到決策：資料齊全就能算出動作', async () => {
+await t('從 snapshot 到決策：資料齊全就能算出動作，並講得出理由', async () => {
   stub(krakenHandler);
-  const snap = await DATA.snapshot('BTCUSDT', ['15m', '1h', '4h', '1d'], 300);
+  const snap = await DATA.snapshot('BTCUSDT', ['15m', '4h', '1d'], 300);
   restore();
 
   const cfg = BOT.defaultConfig();
+  // 假資料從 T0 開始往後排，把「現在」設在所有 K 棒都收盤之後
+  const now = T0 + 301 * 86400e3;
   const market = {
-    now: Date.now(), price: snap.ticker.last, k15: snap.klines['15m'],
-    analyses: {
-      d1: IND.analyze(snap.klines['1d']),
-      h4: IND.analyze(snap.klines['4h']),
-      m15: IND.analyze(snap.klines['15m'])
-    },
+    symbol: 'BTCUSDT', now, price: snap.ticker.last,
+    k4: snap.klines['4h'], d1: snap.klines['1d'], k15: snap.klines['15m'],
     fundingRate: snap.funding ? snap.funding.rate : cfg.fundingPer8h,
-    filters: cfg.filters
+    filters: BOT.filtersFor(cfg, 'BTCUSDT')
   };
   const r = BOT.tick(BOT.newState(cfg), market, cfg);
-  assert.ok(['open', 'wait', 'blocked', 'skip'].includes(r.action.type),
-    '沒預期到的動作 ' + r.action.type);
+  assert.notEqual(r.action.type, 'skip', '資料是夠的，不該跳過：' + (r.action.reason || ''));
+  assert.ok(['open', 'wait', 'blocked'].includes(r.action.type), '沒預期到的動作 ' + r.action.type);
   assert.ok(Number.isFinite(r.state.equity), '權益要是數字');
-  // 假資料是穩定上升，三個週期都會判多 → 應該開倉
-  assert.equal(r.action.type, 'open', '穩定上升的資料應該開多，實際 ' + r.action.type +
-    '（' + (r.action.reason || '') + '）');
-  assert.equal(r.action.plan.side, 'long');
+  // 假資料是一路直線上漲、沒有回檔 → v2 不追價，應該觀望並說明原因
+  assert.equal(r.action.type, 'wait', '一路上漲沒回檔，v2 應該觀望，實際 ' + r.action.type);
+  assert.ok(r.action.reason && r.action.reason.length > 0, '觀望要講得出理由');
+  assert.equal(r.state.status.BTCUSDT.lastBarT, snap.klines['4h'][299].t, '要記下判斷過的那根 4H');
 });
 await t('沒有即時資金費率時，退回設定檔的估計值而不是當成 0', async () => {
   const cfg = BOT.defaultConfig();

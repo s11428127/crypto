@@ -116,6 +116,18 @@ t('RSI 過冷（< 30）就不追空', () => {
   assert.equal(S.signal(sctx({ rsi: Array(6).fill(25) }), I5), null);
 });
 
+console.log('\nexplain —— 說得出卡在哪一條');
+t('有訊號時回傳 null', () => assert.equal(S.explain(ctx(), I5), null));
+t('每一條規則擋下時都有對應的說明', () => {
+  assert.match(S.explain(ctx({ e50: Array(6).fill(101) }), I5), /4H 不是多頭排列/);
+  const noTouch = ctx(); noTouch.l = Array(6).fill(106);
+  assert.match(S.explain(noTouch, I5), /沒有回檔/);
+  assert.match(S.explain(ctx({ c: Array(6).fill(99) }), I5), /站回 EMA20/);
+  assert.match(S.explain(ctx({ c: Array(6).fill(111) }), I5), /太遠/);
+  assert.match(S.explain(ctx({ rsi: Array(6).fill(72) }), I5), /過熱/);
+  assert.match(S.explain(ctx({ dEma: [null] }), I5), /EMA200 資料不足/);
+});
+
 console.log('\ntrail —— 止損只進不退');
 const base = { side: 'long', entry: 100, stop: 90, initRisk: 10, best: 100 };
 function tc(h, atr) { return { h: [h], l: [h - 5], atr: [atr] }; }

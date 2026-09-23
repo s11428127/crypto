@@ -121,6 +121,38 @@
   }
 
   /**
+   * 沒有訊號時，說明卡在哪一條規則（給即時狀態表看）。有訊號時回傳 null。
+   * 判斷順序和 signal() 完全一樣。
+   */
+  function explain(ctx, i, p) {
+    p = p || PARAMS;
+    if (signal(ctx, i, p)) return null;
+    var atr = ctx.atr[i], e20 = ctx.e20[i], e50 = ctx.e50[i], c = ctx.c[i], rsi = ctx.rsi[i];
+    if (!isNum(atr) || !isNum(e20) || !isNum(e50) || !isNum(rsi)) return '4H 指標資料不足';
+    var rg = regime(ctx, i);
+    if (!rg) return '日線 EMA200 資料不足';
+    var from = Math.max(0, i - p.touchLookback + 1), k;
+    if (rg === 'bull') {
+      if (!(e20 > e50 && c > e50)) return '日線多頭，但 4H 不是多頭排列，等 4H 轉強';
+      var t = false;
+      for (k = from; k <= i; k++) if (ctx.l[k] <= ctx.e20[k] + p.touchAtr * atr) t = true;
+      if (!t) return '多頭中，但沒有回檔到 EMA20，不追價';
+      if (!(c > e20)) return '回檔中，等收盤重新站回 EMA20';
+      if (c - e20 > p.maxExtAtr * atr) return '離 EMA20 太遠（' + ((c - e20) / atr).toFixed(1) + ' ATR），不追價';
+      if (rsi > p.rsiLong) return 'RSI ' + rsi.toFixed(0) + ' 過熱，不追價';
+      return '條件未滿足';
+    }
+    if (!(e20 < e50 && c < e50)) return '日線空頭，4H 不是空頭排列，不做';
+    var ts = false;
+    for (k = from; k <= i; k++) if (ctx.h[k] >= ctx.e20[k] - p.touchAtr * atr) ts = true;
+    if (!ts) return '空頭中，但沒有反彈到 EMA20，不追空';
+    if (!(c < e20)) return '反彈中，等收盤重新跌破 EMA20';
+    if (e20 - c > p.maxExtAtr * atr) return '離 EMA20 太遠，不追空';
+    if (rsi < p.rsiShort) return 'RSI ' + rsi.toFixed(0) + ' 過冷，不追空';
+    return '條件未滿足';
+  }
+
+  /**
    * 第 i 根收盤後更新止損（下一根開始生效）。**只會往有利方向移，永遠不後退。**
    * pos 需要：side, entry, stop, initRisk（進場時每單位的風險距離）, best（進場以來最有利價）
    */
@@ -265,7 +297,7 @@
   }
 
   root.STRATEGY = {
-    PARAMS: PARAMS, prepare: prepare, regime: regime, signal: signal,
+    PARAMS: PARAMS, prepare: prepare, regime: regime, signal: signal, explain: explain,
     trail: trail, hitStop: hitStop, size: size, backtest: backtest
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

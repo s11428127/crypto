@@ -313,7 +313,19 @@ function fakeBacktest() {
               maxLossStreak: 9, maxDDR: 12.5,
               long: { n: 36, avgR: 0.24 }, short: { n: 24, avgR: -0.5 }, avgBuyHoldPct: 8.5 },
     symbols: [mkRow('BTCUSDT', 27, 29.6, -0.376), mkRow('AVAXUSDT', 17, 52.9, 0.309),
-              { symbol: 'DOTUSDT', error: 'EQuery:Unknown asset pair' }]
+              { symbol: 'DOTUSDT', error: 'EQuery:Unknown asset pair' }],
+    years: 3,
+    rules: {
+      v1: { name: '原本的規則', desc: 'v1', pooled: { n: 900, winRate: 40, avgR: -0.05, totalR: -45,
+            profitFactor: 0.9, maxLossStreak: 22, maxDDR: 60, long: { n: 500, avgR: 0.1 }, short: { n: 400, avgR: -0.2 } } },
+      v2: { name: '順大勢、等回檔、移動止損', desc: '日線 EMA200 定多空方向', pooled: { n: 300, winRate: 35,
+            avgR: 0.12, totalR: 36, profitFactor: 1.2, maxLossStreak: 11, maxDDR: 20,
+            long: { n: 200, avgR: 0.15 }, short: { n: 100, avgR: 0.06 } } }
+    },
+    quarters: [
+      { q: '2024Q1', buyHold: 30, v1: { n: 80, totalR: 10 }, v2: { n: 30, totalR: 12 } },
+      { q: '2024Q2', buyHold: -18, v1: { n: 70, totalR: -20 }, v2: { n: 20, totalR: 3 } }
+    ]
   };
 }
 
@@ -350,6 +362,10 @@ for (const w of [320, 390, 1180]) {
   if (!/Unknown asset pair/.test(await page.locator('#bt-table').innerText())) {
     bad.push('回測失敗的幣沒有顯示原因');
   }
+  const cmp = await page.locator('#bt-compare').innerText();
+  if (!/原本的規則/.test(cmp) || !/順大勢/.test(cmp)) bad.push('新舊規則比較表沒顯示');
+  if ((await page.locator('#bt-quarters tbody tr').count()) !== 2) bad.push('按季拆分應該有 2 列');
+  if (!/EMA200/.test(await page.locator('#bt-rule').innerText())) bad.push('沒有顯示 v2 規則說明');
   // 多單賺、空單賠、行情在漲 → 要提醒「可能是行情在幫忙」
   if (!/行情在幫忙/.test(await page.locator('#bt-warn').innerText())) {
     bad.push('多賺空賠又逢上漲時，沒有提醒可能是行情因素');
