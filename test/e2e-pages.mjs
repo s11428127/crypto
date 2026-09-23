@@ -20,6 +20,16 @@ async function overflow(page) {
   return page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth);
 }
+async function painted2(page, id) {
+  return page.evaluate(sel => {
+    const c = document.getElementById(sel);
+    if (!c || !c.width || !c.height) return -1;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const set = new Set();
+    for (let i = 0; i < d.length; i += 4 * 97) set.add(`${d[i]},${d[i+1]},${d[i+2]},${d[i+3]}`);
+    return set.size;
+  }, id);
+}
 async function painted(page, id) {
   return page.evaluate(sel => {
     const c = document.getElementById(sel);
@@ -250,6 +260,123 @@ for (const w of [320, 390, 1180]) {
   await ctx.close();
 }
 
+/* ═══ 機器人檢視頁 ═══ */
+function fakeState(nTrades) {
+  const start = 100;
+  let eq = start, t0 = Date.UTC(2026, 8, 1), curve = [], trades = [], notes = [];
+  for (let i = 0; i < nTrades; i++) {
+    const win = i % 3 !== 0;                       // 勝率約 67%
+    const risk = eq * 0.01;
+    const pnl = win ? risk * 1.45 : -risk * 1.03;  // 扣過手續費的 R
+    eq += pnl;
+    const openedAt = t0 + i * 6 * 3600e3;
+    trades.push({ openedAt, closedAt: openedAt + 4 * 3600e3, side: i % 2 ? 'short' : 'long',
+      entry: 80000 + i * 10, stop: 79000 + i * 10, tp: 81500 + i * 10,
+      exit: win ? 81500 + i * 10 : 79000 + i * 10, qty: 0.002, notional: 160,
+      pnl, r: pnl / risk, why: win ? 'tp' : 'stop', equityAfter: eq });
+    curve.push({ t: openedAt, equity: eq, hasPosition: i % 4 === 0 });
+    notes.unshift({ t: openedAt, kind: win ? 'win' : 'loss',
+      text: (win ? '止盈出場' : '止損出場') + ' @ ' + (80000 + i * 10) });
+  }
+  return {
+    version: 1,
+    config: { symbol: 'BTCUSDT', startEquity: start, riskPct: 1, maxLeverage: 5,
+              feeRate: 0.00045, fundingPer8h: 0.0001, rMultiples: [1.5, 3],
+              filters: { minQty: 0.001, stepSize: 0.001, minNotional: 100 } },
+    equity: eq,
+    position: { side: 'long', entry: 81000, stop: 79800, tp: 82800, tp2: 84600,
+                qty: 0.002, notional: 162, exchangeLeverage: 2, liqPrice: 40700,
+                riskUsd: 2.4, entryFee: 0.07, openedAt: t0 + nTrades * 6 * 3600e3,
+                nextFundingAt: t0 + nTrades * 6 * 3600e3 + 8 * 3600e3,
+                why: '日線與 4H 同為多頭；15m 同步轉強' },
+    trades, curve, notes,
+    feesPaid: 1.4, fundingPaid: 0.6, ticks: nTrades * 6,
+    lastTick: Date.now() - 20 * 60000,
+    createdAt: t0
+  };
+}
+
+for (const w of [320, 390, 1180]) {
+  const ctx = await browser.newContext({ viewport: { width: w, height: 1000 }, deviceScaleFactor: 2 });
+  const page = await ctx.newPage();
+  const errs = []; collectErrors(page, errs);
+  const st = fakeState(35);
+  await page.route('**/bot/state.json*', r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(st) }));
+  await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() =>
+    document.querySelector('#stats > div'), { timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(600);
+
+  const bad = [];
+  const stats = await page.locator('#stats').innerText();
+  if (!/交易筆數/.test(stats)) bad.push('沒有顯示統計');
+  if (!/35/.test(stats)) bad.push('交易筆數不對: ' + stats.replace(/\n/g, ' ').slice(0, 80));
+  if (!/樣本足夠/.test(stats)) bad.push('35 筆應該標記樣本足夠');
+
+  const posTxt = await page.locator('#position').innerText();
+  if (!/持有多單/.test(posTxt)) bad.push('沒有顯示持倉');
+  if (!/爆倉價/.test(posTxt)) bad.push('持倉缺少爆倉價');
+
+  const tradeRows = await page.locator('#trades tbody tr').count();
+  if (tradeRows === 0) bad.push('成交紀錄是空的');
+
+  const painted = await painted2(page, 'curve');
+  if (painted < 4) bad.push('權益曲線沒畫出來（色彩數 ' + painted + '）');
+
+  const of1 = await overflow(page);
+  if (of1 > 0) bad.push('水平溢出 ' + of1 + 'px');
+  // 五個分頁要能一行放完，不該需要橫捲才看得到最後一個
+  const navScroll = await page.evaluate(() => {
+    const n = document.querySelector('.nav');
+    return n ? n.scrollWidth - n.clientWidth : 0;
+  });
+  if (navScroll > 0) bad.push('導覽列放不下，需要橫捲 ' + navScroll + 'px');
+  if (errs.length) bad.push('console: ' + errs.join(' | '));
+  report(`bot.html ${w}px`, bad);
+  if (w === 390) await page.screenshot({ path: '/tmp/p-bot.png' });
+  await ctx.close();
+}
+
+/* 還沒有狀態檔時不能白畫面 */
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+  const page = await ctx.newPage();
+  const errs = []; collectErrors(page, errs);
+  await page.route('**/bot/state.json*', r => r.fulfill({ status: 404, body: 'not found' }));
+  await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+  const bad = [];
+  // 這個情境本來就會有一個 404，那是要驗的行為，不算錯誤
+  const realErrs = errs.filter(x => !/Failed to load resource/.test(x));
+  errs.length = 0; realErrs.forEach(x => errs.push(x));
+  const warn = await page.locator('#warn').innerText();
+  if (!/還沒有狀態檔/.test(warn)) bad.push('沒有顯示「還沒有狀態檔」的說明');
+  const dot = await page.locator('#conn-dot').getAttribute('class');
+  if (!/dead/.test(dot)) bad.push('連線指示燈應該是未載入狀態');
+  if (errs.length) bad.push('console: ' + errs.join(' | '));
+  report('bot.html 沒有狀態檔', bad);
+  await ctx.close();
+}
+
+/* 平均每筆是負的時候要跳紅字，不能默默放過 */
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+  const page = await ctx.newPage();
+  const st = fakeState(35);
+  st.trades = st.trades.map(t => ({ ...t, pnl: -Math.abs(t.pnl), r: -Math.abs(t.r) }));
+  await page.route('**/bot/state.json*', r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(st) }));
+  await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(800);
+  const warn = await page.locator('#warn').innerText();
+  const bad = [];
+  if (!/平均每筆是負的/.test(warn)) bad.push('負期望值沒有跳警告');
+  if (!/別拿真錢/.test(warn)) bad.push('警告沒有講清楚結論');
+  report('bot.html 負期望值警告', bad);
+  await ctx.close();
+}
+
 await browser.close();
-console.log(failures === 0 ? '\n三頁全部通過' : `\n${failures} 項失敗`);
+console.log(failures === 0 ? '\n全部通過' : `\n${failures} 項失敗`);
 process.exit(failures ? 1 : 0);

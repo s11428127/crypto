@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>模擬單機器人</title>
+<meta name="description" content="用真實行情跑模擬單，累積可以檢驗的成績單。不下真實訂單。">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="dot" id="conn-dot"></span>
+  <span class="brand">模擬單<b>機器人</b></span>
+  <span class="src" id="src-name">—</span>
+  <span class="spacer"></span>
+  <button class="ghost-btn" id="theme-toggle" type="button">淺色</button>
+</div>
+
+<div class="wrap">
+  <nav class="nav">
+    <a href="index.html">主控台</a>
+    <a href="screener.html">篩選器</a>
+    <a href="sim.html">模擬・回測</a>
+    <a href="journal.html">交易日誌</a>
+    <a href="bot.html" aria-current="page">機器人</a>
+  </nav>
+
+  <div class="alert info" style="margin-top:14px">
+    <b>這個機器人不會下真實訂單</b>
+    它用真實行情、真實手續費、真實資金費記錄「照這套規則做會變怎樣」，
+    不需要 API 金鑰、碰不到任何帳戶。目的是先累積一份可以檢驗的成績單。
+  </div>
+
+  <div class="sec">
+    <h2>成績</h2>
+    <div class="kv" id="stats"></div>
+    <canvas class="panel" id="curve"></canvas>
+    <div class="ma-legend" id="legend"></div>
+    <div id="warn"></div>
+  </div>
+
+  <div class="sec">
+    <h2>目前狀態</h2>
+    <div class="plan" id="position"></div>
+  </div>
+
+  <div class="sec">
+    <h2>最近動作</h2>
+    <div class="tbl-wrap" id="notes"></div>
+  </div>
+
+  <div class="sec">
+    <h2>成交紀錄</h2>
+    <div class="tbl-wrap" id="trades"></div>
+  </div>
+
+  <div class="sec">
+    <h2>載入狀態檔</h2>
+    <p class="hint">
+      機器人由 GitHub Actions 每小時跑一輪，結果寫在 repo 的 <code>bot/state.json</code>。
+      這一頁會自動去讀；讀不到的話可以手動選檔案。
+    </p>
+    <div class="bar-actions">
+      <button class="ghost-btn" id="reload" type="button">重新載入</button>
+      <button class="ghost-btn" id="pick" type="button">選擇 state.json</button>
+      <input type="file" id="file" accept="application/json,.json" hidden>
+      <span class="updated" id="load-status"></span>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    模擬單的成績不等於真實交易的成績：真實下單會有滑點、部分成交、以及你自己的手動干預。
+    但如果連模擬單都不賺錢，真實下單只會更差。
+  </div>
+</div>
+
+<script src="assets/theme.js"></script>
+<script src="assets/risk.js"></script>
+<script src="assets/indicators.js"></script>
+<script src="assets/plan.js"></script>
+<script src="assets/bot.js"></script>
+<script src="assets/bot-page.js"></script>
+</body>
+</html>

@@ -10,6 +10,7 @@
 | `screener.html` 篩選器 | 掃成交量前段的 USDT 永續，依趨勢一致性／相對 BTC 強弱／RSI／資金費率評分，排出偏多與偏空清單，可點開看每一項的理由 |
 | `sim.html` 模擬・回測 | 結果分布模擬（給定勝率與盈虧比，做 N 筆後的分布）＋ 用真實歷史 K 線跑策略回測 |
 | `journal.html` 交易日誌 | 記錄每筆的 R 倍數，累積算真實勝率、期望值、最大回撤、連敗。存本機，可匯出／匯入 |
+| `bot.html` 機器人 | 模擬單機器人的成績：權益曲線、目前持倉、成交紀錄。機器人本身由 GitHub Actions 每小時跑一輪 |
 
 ## 這個工具不做什麼
 
@@ -32,7 +33,10 @@ assets/backtest.js    歷史回測（嚴格不偷看未來）
 assets/sim.js         蒙地卡羅結果分布
 assets/screener.js    幣種評分與排序
 assets/journal.js     交易日誌統計
+assets/bot.js         模擬單機器人的決策引擎
 ```
+
+排程執行器：`bot/run.mjs` + `.github/workflows/paper-bot.yml`（見 `bot/README.md`）
 
 介面層只負責顯示與繪圖，不重寫任何公式：
 `dash.js` / `chart.js` / `sim-page.js` / `screener-page.js` / `journal-page.js` / `theme.js`
@@ -41,7 +45,7 @@ assets/journal.js     交易日誌統計
 
 ```bash
 npm run serve      # http://127.0.0.1:8099
-npm test           # 純函式層驗算（128 項）
+npm test           # 純函式層驗算（184 項）
 npm run test:e2e   # 瀏覽器檢查，四種寬度（需要先啟動 serve）
 ```
 
@@ -53,6 +57,7 @@ E2E 用 Playwright 攔截請求餵模擬行情，所以離線也跑得起來。
 ## 安全性
 
 不連接交易所帳戶、不需要 API key、不能下單、不能提幣。
+機器人跑的是**模擬單**，用真實行情記錄「照規則做會變怎樣」，不會動到任何真實資金。
 行情只走公開端點（K 線、24h 行情、資金費率、未平倉量、下單限制）與公開的 WebSocket 行情頻道。
 交易日誌存在瀏覽器本機 localStorage，不上傳。
 
@@ -62,6 +67,8 @@ E2E 用 Playwright 攔截請求餵模擬行情，所以離線也跑得起來。
   所以爆倉價會和交易所 App 顯示的有小誤差。**以 App 為準。**
 - 回測不模擬 15m 的時機過濾（只用 1D + 4H 定方向），也不模擬滑點與部分成交。
 - 回測的資金費用固定平均值估算，不是歷史實際費率。
+- 機器人每小時跑一輪，所以止損／止盈的判定精度是 15 分鐘 K 棒，不是逐筆成交。
+- 行情落到 Kraken（現貨）時沒有即時資金費率，會用設定檔的估計值。
 
 ## 免責
 

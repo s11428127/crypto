@@ -79,7 +79,7 @@ body {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
-.brand { font-weight: 700; letter-spacing: .3px; }
+.brand { font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
 .brand b { color: var(--accent); }
 .topbar .spacer { flex: 1; }
 .ghost-btn {
@@ -317,6 +317,14 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
 .nav a:hover { color: var(--text); }
 .nav a[aria-current="page"] {
   color: var(--accent); border-color: var(--accent); background: var(--surface-2);
+}
+/* 五個分頁在手機寬度會擠不下，縮一點讓它一行放得完 */
+@media (max-width: 480px) {
+  .nav { gap: 3px; }
+  .nav a { padding: 7px 6px; font-size: 12px; }
+}
+@media (max-width: 360px) {
+  .nav a { padding: 7px 3px; font-size: 11px; letter-spacing: -.2px; }
 }
 
 /* 通用表格 */

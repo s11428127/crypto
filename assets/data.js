@@ -222,7 +222,81 @@
     }
   };
 
-  var SOURCES = [BINANCE, BYBIT];
+  /* ---------- Kraken（第三備援，現貨） ----------
+   *
+   * 存在的理由：Binance／Bybit／OKX 都封鎖美國 IP，而無人值守的排程
+   * （例如 GitHub Actions）跑在美國機器上。Kraken 沒有這個限制，
+   * 而且公開 OHLC 剛好支援 15m / 1h / 4h / 1d 四個週期。
+   *
+   * 限制：這是**現貨**資料，沒有資金費率與未平倉量，歷史也只有 720 根。
+   * 價格走勢和永續幾乎一樣，拿來跑訊號沒問題，但衍生品欄位會是空的。
+   */
+  var KRAKEN = {
+    id: 'kraken',
+    name: 'Kraken',
+    base: 'https://api.kraken.com',
+    intervals: { '15m': 15, '1h': 60, '4h': 240, '1d': 1440 },
+    // BTCUSDT → XBTUSD（Kraken 把 BTC 叫做 XBT，而且用 USD 不是 USDT）
+    pair: function (sym) {
+      var b = sym.replace(/USDT$/, '').replace(/USD$/, '');
+      if (b === 'BTC') b = 'XBT';
+      return b + 'USD';
+    },
+    // 回傳的 key 可能是 XXBTZUSD 這種內部代號，取第一個非 last 的欄位
+    pick: function (result) {
+      for (var k in result) if (k !== 'last') return result[k];
+      return null;
+    },
+    klines: function (sym, tf, limit) {
+      var self = this;
+      return fetchJSON(this.base + '/0/public/OHLC?pair=' + this.pair(sym) +
+                       '&interval=' + this.intervals[tf])
+        .then(function (d) {
+          if (d.error && d.error.length) throw new Error(d.error.join(','));
+          var rows = self.pick(d.result) || [];
+          return rows.slice(-limit).map(function (r) {
+            return { t: r[0] * 1000, o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[6] };
+          });
+        });
+    },
+    ticker: function (sym) {
+      var self = this;
+      return fetchJSON(this.base + '/0/public/Ticker?pair=' + this.pair(sym))
+        .then(function (d) {
+          if (d.error && d.error.length) throw new Error(d.error.join(','));
+          var t = self.pick(d.result);
+          if (!t) throw new Error('沒有行情資料');
+          var last = +t.c[0], open = +t.o;
+          return {
+            last: last,
+            changePct: open > 0 ? (last - open) / open * 100 : null,
+            high: +t.h[1], low: +t.l[1],
+            volume: +t.v[1], quoteVolume: +t.v[1] * (+t.p[1] || last)
+          };
+        });
+    },
+    // 現貨沒有這些，明確拋錯讓呼叫端知道是「沒有」而不是「抓失敗」
+    funding: function () { return Promise.reject(new Error('Kraken 現貨沒有資金費率')); },
+    openInterest: function () { return Promise.reject(new Error('Kraken 現貨沒有未平倉量')); },
+    filters: function () { return Promise.reject(new Error('Kraken 沒有永續的下單限制')); },
+    allTickers: function () { return Promise.reject(new Error('Kraken 不支援全市場掃描')); },
+    allFunding: function () { return Promise.reject(new Error('Kraken 現貨沒有資金費率')); },
+    filtersAll: function () { return Promise.reject(new Error('Kraken 沒有永續的下單限制')); },
+    wsUrl: function () { return 'wss://ws.kraken.com'; },
+    wsSub: function (sym) {
+      return JSON.stringify({ event: 'subscribe', pair: [this.pair(sym).replace('USD', '/USD')],
+                              subscription: { name: 'trade' } });
+    },
+    wsPrice: function (msg) {
+      // [channelID, [[price, volume, time, side, type, misc]], "trade", pair]
+      if (Array.isArray(msg) && msg[2] === 'trade' && Array.isArray(msg[1]) && msg[1].length) {
+        return +msg[1][msg[1].length - 1][0];
+      }
+      return null;
+    }
+  };
+
+  var SOURCES = [BINANCE, BYBIT, KRAKEN];
   var active = BINANCE;
 
   /** 依序嘗試各來源，第一個成功的就成為之後的主來源 */

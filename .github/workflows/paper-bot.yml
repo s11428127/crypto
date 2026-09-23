@@ -1,0 +1,45 @@
+name: 模擬單機器人
+
+# 每小時跑一輪。GitHub 的排程可能延遲幾分鐘，對 4H 級別的策略沒有影響。
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:          # 也可以手動觸發
+
+permissions:
+  contents: write             # 要把狀態檔寫回 repo
+
+concurrency:
+  group: paper-bot            # 同時只跑一個，避免兩輪互相覆蓋狀態
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 跑一輪
+        run: node bot/run.mjs
+
+      - name: 把狀態寫回 repo
+        run: |
+          if git diff --quiet -- bot/state.json; then
+            echo "狀態沒有變化，不提交"
+            exit 0
+          fi
+          git config user.name  "paper-bot"
+          git config user.email "noreply@anthropic.com"
+          git add bot/state.json
+          git commit -m "bot: $(date -u '+%Y-%m-%d %H:%M') UTC 模擬單狀態更新"
+          # 排程之間偶爾會撞在一起，重試幾次
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i * 5))
+          done
+          echo "推送失敗" >&2
+          exit 1
