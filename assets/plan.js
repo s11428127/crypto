@@ -205,8 +205,82 @@
     return out;
   }
 
+  /**
+   * 給定方向與結構，算出一整組可執行的數字：
+   * 進場、止損、止盈、部位大小、槓桿、爆倉價，以及**賺賠各是幾 U**。
+   *
+   * 和 build() 的差別：build() 自己判斷方向（要三個時間框架），
+   * 這支只負責「方向已經決定了，那部位該怎麼開」，篩選器每一列都用它。
+   *
+   * 部位大小的決定順序（順序很重要）：
+   *   1. 依風險% 算出理想數量
+   *   2. 進位到交易所的最小跳動單位
+   *   3. 不足最小下單量 → 頂上去（風險會被迫變大）
+   *   4. 名目超過槓桿上限 → 這筆做不起來，標記 blockedBy
+   */
+  function sizedPlan(opts) {
+    var side = opts.side === 'short' ? 'short' : 'long';
+    var entry = opts.price, atr = opts.atr, swing = opts.swing;
+    var equity = opts.equity, riskPct = opts.riskPct;
+    var maxLev = isN(opts.maxLeverage) ? opts.maxLeverage : 20;
+    var filters = opts.filters || R.DEFAULT_FILTERS;
+    var rMultiples = opts.rMultiples || [1.5, 3];
+
+    if (!isN(entry) || entry <= 0 || !isN(atr) || atr <= 0 ||
+        !isN(equity) || equity <= 0 || !isN(riskPct) || riskPct <= 0) return null;
+
+    var st = stopLevel(side, entry, swing, atr, opts.stopCfg);
+    var stopDist = st.dist;
+
+    // 理想數量 → 進位 → 頂到最小可下單
+    var wantQty = (equity * riskPct / 100) / stopDist;
+    var qty = R.ceilToStep(wantQty, filters.stepSize);
+    var feas = R.feasibility({ equity: equity, entry: entry, stop: st.price, filters: filters });
+    var forcedUp = false;
+    if (qty < feas.minQty) { qty = feas.minQty; forcedUp = true; }
+
+    var notional = qty * entry;
+    var leverage = notional / equity;
+    var blockedBy = null;
+    if (notional > equity * maxLev + 1e-9) blockedBy = 'leverageCap';
+
+    var riskUsd = qty * stopDist;
+    if (riskUsd >= equity) blockedBy = blockedBy || 'riskTooBig';
+
+    var tps = R.targets({ entry: entry, stop: st.price, rMultiples: rMultiples });
+    var out = {
+      side: side, entry: entry,
+      stop: st.price, stopDist: stopDist, stopDistPct: stopDist / entry * 100,
+      stopClamped: st.clamped,
+      qty: qty, notional: notional, leverage: leverage,
+      riskUsd: riskUsd, riskPctActual: riskUsd / equity * 100,
+      forcedUp: forcedUp, blockedBy: blockedBy, feasible: blockedBy === null,
+      minQty: feas.minQty, minNotional: feas.minNotional,
+      targets: tps.map(function (t) {
+        return {
+          r: t.r, price: t.price,
+          // 賺幾 U：數量 × 價差（方向已經含在 targets 的算法裡）
+          usd: qty * Math.abs(t.price - entry)
+        };
+      })
+    };
+
+    // 爆倉價用「實際會用到的槓桿」算，不是使用者設的上限
+    if (leverage > 0) {
+      out.liqPrice = R.liqPrice({ entry: entry, leverage: leverage, side: side, mmr: opts.mmr });
+      var lq = R.liqBeforeStop({ entry: entry, leverage: leverage, side: side,
+                                 stop: st.price, mmr: opts.mmr });
+      out.liqBeforeStop = lq ? lq.liquidatedFirst : null;
+    }
+
+    var fee = R.feeInR({ notional: notional, riskAmt: riskUsd });
+    if (fee) { out.feeUsd = fee.feeUsd; out.feeR = fee.feeR; }
+
+    return out;
+  }
+
   root.PLAN = {
     bias: bias, timing: timing, stopLevel: stopLevel,
-    fundingRead: fundingRead, build: build
+    fundingRead: fundingRead, build: build, sizedPlan: sizedPlan
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

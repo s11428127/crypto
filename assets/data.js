@@ -78,6 +78,23 @@
         };
       });
     },
+    // 一次 exchangeInfo 拿回「所有」幣的下單限制，篩選器每一列都要用
+    filtersAll: function () {
+      return fetchJSON(this.base + '/fapi/v1/exchangeInfo').then(function (d) {
+        var m = {};
+        (d.symbols || []).forEach(function (s) {
+          var f = {};
+          s.filters.forEach(function (x) { f[x.filterType] = x; });
+          m[s.symbol] = {
+            minQty: +(f.LOT_SIZE && f.LOT_SIZE.minQty) || 0.001,
+            stepSize: +(f.LOT_SIZE && f.LOT_SIZE.stepSize) || 0.001,
+            minNotional: +(f.MIN_NOTIONAL && f.MIN_NOTIONAL.notional) || 5,
+            pricePrecision: s.pricePrecision
+          };
+        });
+        return m;
+      });
+    },
     // 全市場 24h 行情：一次呼叫拿回所有合約，篩選器用
     allTickers: function () {
       return fetchJSON(this.base + '/fapi/v1/ticker/24hr').then(function (rows) {
@@ -160,6 +177,21 @@
             pricePrecision: 2
           };
         });
+    },
+    filtersAll: function () {
+      return fetchJSON(this.base + '/v5/market/instruments-info?category=linear').then(function (d) {
+        var m = {};
+        ((d.result && d.result.list) || []).forEach(function (s) {
+          var lot = s.lotSizeFilter || {};
+          m[s.symbol] = {
+            minQty: +lot.minOrderQty || 0.001,
+            stepSize: +lot.qtyStep || 0.001,
+            minNotional: +lot.minNotionalValue || 5,
+            pricePrecision: 2
+          };
+        });
+        return m;
+      });
     },
     allTickers: function () {
       return fetchJSON(this.base + '/v5/market/tickers?category=linear').then(function (d) {
@@ -334,6 +366,7 @@
     klinesBatch: klinesBatch,
     history: history,
     allTickers: function () { return withFallback('allTickers', []); },
+    filtersAll: function () { return withFallback('filtersAll', []); },
     allFunding: function () { return withFallback('allFunding', []); },
     _fetchJSON: fetchJSON
   };

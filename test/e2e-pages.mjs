@@ -138,15 +138,45 @@ for (const w of [320, 390, 1180]) {
   const all = (await page.locator('#longs').innerText()) + (await page.locator('#shorts').innerText());
   if (/TINY/.test(all)) bad.push('成交量過低的幣不該進榜');
 
-  // 點一列要看得到評分理由
+  // 每一列都要有可執行的價位與賺賠金額
   if (longRows + shortRows > 0) {
     const target = longRows > 0 ? '#longs tbody tr' : '#shorts tbody tr';
+    const cells = await page.locator(target).first().locator('td').allInnerTexts();
+    const [, , feas, entry, stop, tp1, tp2, loss, win, lev] = cells;
+    if (!/可做|風險被頂高|超過槓桿上限|風險過大/.test(feas)) bad.push('可行性欄位不對: ' + feas);
+    if (!/[\d,]/.test(entry)) bad.push('沒有進場價: ' + entry);
+    if (!/[\d,]/.test(stop)) bad.push('沒有止損價: ' + stop);
+    if (!/^−\$[\d.,]+$/.test(loss)) bad.push('沒有顯示會虧幾 U: ' + loss);
+    if (!/^\+\$[\d.,]+$/.test(win)) bad.push('沒有顯示會賺幾 U: ' + win);
+    if (!/x$/.test(lev)) bad.push('沒有顯示槓桿: ' + lev);
+
+    // TP1 的獲利金額必須是停損金額的 1.5 倍
+    const lossN = parseFloat(loss.replace(/[−$,]/g, ''));
+    const winN = parseFloat(win.replace(/[+$,]/g, ''));
+    if (isFinite(lossN) && isFinite(winN) && lossN > 0) {
+      const ratio = winN / lossN;
+      if (Math.abs(ratio - 1.5) > 0.06) bad.push('TP1 應該是 1.5R，實際比值 ' + ratio.toFixed(2));
+    }
+
+    // 點開要看到完整計畫與評分理由
     await page.locator(target).first().click();
     await page.waitForTimeout(300);
     const d = await page.locator('#detail').innerText();
+    if (!/完整計畫/.test(d)) bad.push('點選後沒有顯示完整計畫');
+    if (!/爆倉價/.test(d)) bad.push('完整計畫缺少爆倉價');
     if (!/評分細項/.test(d)) bad.push('點選後沒有顯示評分理由');
     if (!/資金費率|趨勢/.test(d)) bad.push('評分理由缺少項目');
   }
+
+  // 槓桿上限調低，原本開得起來的要變成開不起來（BTC 最小名目 $100）
+  await page.fill('#sc-lev', '1');
+  await page.waitForTimeout(400);
+  const afterLev = (await page.locator('#longs').innerText()) + (await page.locator('#shorts').innerText());
+  if (!/超過槓桿上限/.test(afterLev)) {
+    bad.push('槓桿上限降到 1x 時，應該有幣變成「超過槓桿上限」');
+  }
+  await page.fill('#sc-lev', '5');
+  await page.waitForTimeout(400);
 
   const of1 = await overflow(page);
   if (of1 > 0) bad.push('水平溢出 ' + of1 + 'px');

@@ -28,7 +28,9 @@
     <h2>偏多／偏空清單</h2>
     <p class="hint">
       掃成交量前段的 USDT 永續，每個幣算一組分數：趨勢一致性、相對 BTC 強弱、RSI 位置、資金費率。
-      分數為正偏多、為負偏空，絕對值越大訊號越強。點一列看評分理由。
+      分數為正偏多、為負偏空，絕對值越大訊號越強。
+      每一列都依你的本金與槓桿上限算好<b>進場、止損、止盈與賺賠各幾 U</b>，
+      開不起來的會標示原因。點一列看評分理由與完整計畫。
     </p>
 
     <div class="params">
@@ -40,6 +42,12 @@
         </select></div>
       <div class="field"><label for="sc-vol">最低 24h 量 (M USDT)</label>
         <input type="number" id="sc-vol" value="50" step="10" inputmode="decimal"></div>
+      <div class="field"><label for="sc-equity">本金 USDT</label>
+        <input type="number" id="sc-equity" value="50" step="10" inputmode="decimal"></div>
+      <div class="field"><label for="sc-risk">單筆風險 %</label>
+        <input type="number" id="sc-risk" value="1" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="sc-lev">槓桿上限 x</label>
+        <input type="number" id="sc-lev" value="5" step="1" inputmode="decimal"></div>
     </div>
 
     <div class="bar-actions">

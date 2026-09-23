@@ -330,6 +330,11 @@ table.tbl th {
   font-family: var(--sans); position: sticky; top: 0; background: var(--surface);
 }
 table.tbl td:first-child, table.tbl th:first-child { text-align: left; }
+/* 欄位多到要橫捲時，幣種欄釘在左邊，不然捲出去就不知道在看哪一列 */
+table.tbl td:first-child, table.tbl th:first-child {
+  position: sticky; left: 0; background: var(--surface); z-index: 1;
+}
+table.tbl th:first-child { z-index: 2; }
 .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 table.tbl tr.long-row td:first-child { border-left: 2px solid var(--long); }
 table.tbl tr.short-row td:first-child { border-left: 2px solid var(--short); }

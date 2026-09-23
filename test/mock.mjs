@@ -71,12 +71,20 @@ export async function mockBinance(page, opts = {}) {
     body: JSON.stringify({ openInterest: '81234.5', time: String(Date.now()) })
   }));
 
-  await page.route('**/fapi/v1/exchangeInfo*', route => route.fulfill({
-    status: 200, contentType: 'application/json',
-    body: JSON.stringify({ symbols: [{ symbol: 'BTCUSDT', pricePrecision: 1, filters: [
-      { filterType: 'LOT_SIZE', minQty: '0.001', stepSize: '0.001' },
-      { filterType: 'MIN_NOTIONAL', notional: '100' }] }] })
-  }));
+  // exchangeInfo 回全部的幣：BTC 的最小名目高（$100），山寨低（$5）——
+  // 這個差異正是小資金帳戶「BTC 做不細、山寨做得細」的來源
+  await page.route('**/fapi/v1/exchangeInfo*', route => {
+    const syms = SYMS.map((s, i) => ({
+      symbol: s, pricePrecision: 2,
+      filters: s === 'BTCUSDT'
+        ? [{ filterType: 'LOT_SIZE', minQty: '0.001', stepSize: '0.001' },
+           { filterType: 'MIN_NOTIONAL', notional: '100' }]
+        : [{ filterType: 'LOT_SIZE', minQty: '0.01', stepSize: '0.01' },
+           { filterType: 'MIN_NOTIONAL', notional: '5' }]
+    }));
+    route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ symbols: syms }) });
+  });
 
   await page.route('**/api.bybit.com/**', route => route.abort());
 }

@@ -151,5 +151,76 @@ t('手續費佔比過高時會警告', () => {
   assert.ok(p.fee && p.fee.feeR > 0, '應該算得出手續費的 R 佔比');
 });
 
+console.log('\nsizedPlan —— 部位大小與賺賠金額');
+const BTC_F = { minQty: 0.001, stepSize: 0.001, minNotional: 100 };
+const ALT_F = { minQty: 1, stepSize: 1, minNotional: 5 };
+const baseSP = { side: 'long', price: 80606, atr: 1200,
+                 swing: { low: 78800, high: 81500 }, equity: 50, riskPct: 1, maxLeverage: 5 };
+
+t('止損在進場價下方、止盈在上方（做多）', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { filters: BTC_F }));
+  assert.ok(p.stop < p.entry);
+  assert.ok(p.targets[0].price > p.entry);
+  assert.ok(p.targets[1].price > p.targets[0].price);
+});
+t('做空時方向整個反轉', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { side: 'short', filters: BTC_F }));
+  assert.ok(p.stop > p.entry, '空單止損要在上方');
+  assert.ok(p.targets[0].price < p.entry, '空單止盈要在下方');
+});
+t('賺賠金額 = 數量 × 價差', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { filters: BTC_F }));
+  near(p.riskUsd, p.qty * Math.abs(p.entry - p.stop), 1e-9);
+  near(p.targets[0].usd, p.qty * Math.abs(p.targets[0].price - p.entry), 1e-9);
+  near(p.targets[1].usd, p.qty * Math.abs(p.targets[1].price - p.entry), 1e-9);
+});
+t('止盈金額確實是止損金額的 R 倍', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { filters: BTC_F }));
+  near(p.targets[0].usd, p.riskUsd * 1.5, 1e-9);
+  near(p.targets[1].usd, p.riskUsd * 3, 1e-9);
+});
+t('$50 做 BTC 會被最小下單量頂上去，風險遠超過 1%', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { filters: BTC_F }));
+  assert.equal(p.forcedUp, true);
+  assert.ok(p.riskPctActual > 5, '實際風險應該遠大於 1%，實際 ' + p.riskPctActual.toFixed(2));
+});
+t('同樣 $50 做最小名目低的幣，1% 風險做得到', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { price: 1.0, atr: 0.02, swing: { low: 0.97, high: 1.03 }, filters: ALT_F }));
+  assert.equal(p.forcedUp, false);
+  assert.ok(Math.abs(p.riskPctActual - 1) < 0.5,
+    '應該接近 1%，實際 ' + p.riskPctActual.toFixed(2));
+});
+t('名目超過槓桿上限時標記為做不起來', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { equity: 20, maxLeverage: 2, filters: BTC_F }));
+  assert.equal(p.feasible, false);
+  assert.equal(p.blockedBy, 'leverageCap');
+});
+t('槓桿是算出來的，不是使用者設的上限', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { filters: BTC_F }));
+  near(p.leverage, p.notional / 50, 1e-9);
+  assert.ok(p.leverage < 5, '實際槓桿應該低於上限 5x，實際 ' + p.leverage.toFixed(2));
+});
+t('爆倉價用實際槓桿算，而且要在止損之外', () => {
+  const p = P.sizedPlan(Object.assign({}, baseSP, { filters: BTC_F }));
+  assert.ok(p.liqPrice < p.stop, '多單的爆倉價應該低於止損價');
+  assert.equal(p.liqBeforeStop, false);
+});
+t('槓桿高到爆倉距離小於止損距離時，會標記「爆倉先於止損」', () => {
+  // 止損距離固定 2.61%。爆倉距離 ≈ 1/槓桿，所以臨界點在 38 倍附近。
+  const safe = P.sizedPlan(Object.assign({}, baseSP, {
+    equity: 10, maxLeverage: 100, riskPct: 80, filters: BTC_F }));
+  assert.ok(safe.leverage > 30 && safe.leverage < 38, '這組應該落在 30~38 倍，實際 ' + safe.leverage.toFixed(1));
+  assert.equal(safe.liqBeforeStop, false, '32 倍配 2.6% 止損，止損仍會先觸發');
+
+  const bad = P.sizedPlan(Object.assign({}, baseSP, {
+    equity: 6, maxLeverage: 100, riskPct: 80, filters: BTC_F }));
+  assert.ok(bad.leverage > 38, '這組應該超過 38 倍，實際 ' + bad.leverage.toFixed(1));
+  assert.equal(bad.liqBeforeStop, true, '40 倍時爆倉會先發生，止損等於沒設');
+});
+t('參數不完整時回傳 null 而不是丟例外', () => {
+  assert.equal(P.sizedPlan({ side: 'long', price: 0, atr: 1, equity: 50, riskPct: 1 }), null);
+  assert.equal(P.sizedPlan({ side: 'long', price: 100, atr: 0, equity: 50, riskPct: 1 }), null);
+});
+
 console.log('\n' + (fail === 0 ? `全部通過（${pass} 項）` : `${pass} 通過 / ${fail} 失敗`));
 process.exit(fail === 0 ? 0 : 1);
