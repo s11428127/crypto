@@ -5,7 +5,7 @@
   "type": "module",
   "description": "BTC 合約風險控制與技術分析工具",
   "scripts": {
-    "test": "node test/risk.test.js && node test/indicators.test.js && node test/plan.test.js && node test/backtest.test.js && node test/screener.test.js && node test/bot.test.js && node test/bot-run.test.js",
+    "test": "node test/risk.test.js && node test/indicators.test.js && node test/plan.test.js && node test/backtest.test.js && node test/screener.test.js && node test/bot.test.js && node test/bot-run.test.js && node test/history.test.js && node test/strategy.test.js",
     "test:e2e": "node test/e2e-dash.mjs && node test/e2e-pages.mjs",
     "serve": "npx http-server -p 8099 -s .",
     "bot": "node bot/run.mjs",

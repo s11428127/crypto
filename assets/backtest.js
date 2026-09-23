@@ -301,5 +301,5 @@
   }
 
   root.BACKTEST = { run: run, resampleToDaily: resampleToDaily, swingUpTo: swingUpTo,
-                    lastClosedDaily: lastClosedDaily };
+                    lastClosedDaily: lastClosedDaily, stats: stats };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

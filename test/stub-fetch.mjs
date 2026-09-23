@@ -20,9 +20,30 @@ function ohlc(stepMin) {
   }
   return rows;
 }
+/* 假的 Bitstamp：3.5 年、先漲再跌再漲，支援 end 參數往回翻頁 */
+function bitstampPx(sec) {
+  const d = (sec - Date.UTC(2023, 0, 1) / 1000) / 86400;
+  const trend = d < 450 ? 20000 + d * 60 : d < 800 ? 47000 - (d - 450) * 50 : 29500 + (d - 800) * 55;
+  return trend + 2500 * Math.sin(d / 11) + 700 * Math.sin(d / 2.1);
+}
+function bitstamp(u) {
+  const step = +u.searchParams.get('step'), end = +u.searchParams.get('end');
+  const limit = +u.searchParams.get('limit');
+  const first = Date.UTC(2023, 0, 1) / 1000;
+  const rows = [];
+  for (let ts = Math.floor(end / step) * step; ts >= first && rows.length < limit; ts -= step) {
+    const o = bitstampPx(ts), c = bitstampPx(ts + step);
+    rows.push({ timestamp: String(ts), open: o.toFixed(2), close: c.toFixed(2),
+      high: (Math.max(o, c) * 1.004).toFixed(2), low: (Math.min(o, c) * 0.996).toFixed(2), volume: '10' });
+  }
+  rows.reverse();
+  return { ok: true, status: 200, json: async () => ({ data: { pair: 'X/USD', ohlc: rows } }) };
+}
+
 globalThis.fetch = async (url) => {
   const u = String(url);
   const bad = { ok: false, status: 403, json: async () => ({}) };
+  if (/bitstamp\.net\/api\/v2\/ohlc/.test(u)) return bitstamp(new URL(u));
   if (!/api\.kraken\.com/.test(u)) return bad;
   if (/\/0\/public\/OHLC/.test(u)) {
     const iv = new URL(u).searchParams.get('interval');
