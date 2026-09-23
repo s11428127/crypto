@@ -247,6 +247,28 @@ t('資金費每 8 小時收一次，只收到出場那一刻為止', () => {
   near(out.equity, 100 + out.trades[0].pnl, 1e-9);
 });
 
+t('浮動損益 = 用現價平倉會記下的損益（含開倉費、資金費、平倉費）', () => {
+  const later = B.apply(opened, { type: 'hold', pos: P0 }, marketAt(bull, I0 + 2, 'AAAUSDT', { now: P0.openedAt + 17 * 3600e3 }));
+  const pos = later.positions.AAAUSDT, price = P0.entry * 1.013;
+  const u = B.unrealized(pos, price, CFG.feeRate);
+  const out = B.apply(later, { type: 'close', price, at: P0.openedAt + 18 * 3600e3, why: 'trail' },
+                      marketAt(bull, I0 + 2, 'AAAUSDT', { now: P0.openedAt + 18 * 3600e3 }));
+  near(u.pnl, out.trades[0].pnl, 1e-9);
+  near(u.r, out.trades[0].r, 1e-9);
+  near(later.equity + u.equityDelta, out.equity, 1e-9);
+});
+t('浮動損益：進場價不動也是負的（已付的手續費）；離止損的距離', () => {
+  const u = B.unrealized(P0, P0.entry, CFG.feeRate);
+  near(u.gross, 0); assert.ok(u.pnl < 0);
+  near(u.pnl, -(P0.entryFee + P0.qty * P0.entry * CFG.feeRate), 1e-12);
+  near(u.toStopPct, (P0.entry - P0.stop) / P0.entry * 100, 1e-9);
+  const sh = Object.assign({}, P0, { side: 'short', stop: P0.entry * 1.02 });
+  assert.ok(B.unrealized(sh, P0.entry * 0.99, 0).gross > 0);
+  near(B.unrealized(sh, P0.entry, 0).toStopPct, 2, 1e-9);
+  assert.equal(B.unrealized(P0, null, 0), null);
+  assert.equal(B.unrealized(P0, 0, 0), null);
+});
+
 console.log('\n和回測逐筆一致（回測到什麼，就跑什麼）');
 function replay(ser, cfg) {
   let s = B.newState(cfg);

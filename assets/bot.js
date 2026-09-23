@@ -292,6 +292,26 @@
     return s;
   }
 
+  /**
+   * 持倉的浮動損益（用現價假設「現在平倉」）。算法和 apply() 的平倉完全一樣：
+   *   equityIfClosed = 帳上權益已扣過開倉手續費與資金費，只差「價差 − 平倉手續費」
+   *   pnl / r        = 這一筆從開倉到現在的淨損益，和成交紀錄的定義相同
+   */
+  function unrealized(pos, price, feeRate) {
+    if (!pos || !isNum(price) || price <= 0) return null;
+    var dir = pos.side === 'long' ? 1 : -1;
+    var gross = dir * (price - pos.entry) * pos.qty;
+    var exitFee = pos.qty * price * (isNum(feeRate) ? feeRate : 0);
+    var pnl = gross - exitFee - (pos.entryFee || 0) - (pos.funding || 0);
+    return {
+      price: price, gross: gross, exitFee: exitFee,
+      equityDelta: gross - exitFee, pnl: pnl,
+      r: pos.riskUsd > 0 ? pnl / pos.riskUsd : null,
+      // 離止損還有多遠（%）；負的代表已經穿過，下一輪就會出場
+      toStopPct: isNum(pos.stop) ? dir * (price - pos.stop) / price * 100 : null
+    };
+  }
+
   function setStatus(state, sym, now, type, reason) {
     var s = JSON.parse(JSON.stringify(state));
     s.status = s.status || {};
@@ -365,6 +385,7 @@
     defaultConfig: defaultConfig, newState: newState, migrate: migrate,
     symbolsOf: symbolsOf, filtersFor: filtersFor,
     decide: decide, apply: apply, tick: tick, mark: mark, setStatus: setStatus,
-    stats: stats, openCount: openCount, totalNotional: totalNotional, manage: manage
+    stats: stats, openCount: openCount, totalNotional: totalNotional, manage: manage,
+    unrealized: unrealized
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -338,10 +338,16 @@ for (const w of [320, 390, 1180]) {
     status: 200, contentType: 'application/json', body: JSON.stringify(st) }));
   await page.route('**/bot/backtest.json*', r => r.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify(fakeBacktest()) }));
+  // 持倉的現價：ETH 從 3000 漲到 3030
+  await page.route('**/fapi/v1/ticker/24hr*', r => r.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ lastPrice: '3030', priceChangePercent: '1', highPrice: '3050', lowPrice: '2990',
+                           volume: '1', quoteVolume: '1' }) }));
   await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() =>
     document.querySelector('#stats > div'), { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(600);
+  await page.waitForFunction(() => /3030/.test(document.querySelector('#positions').innerText),
+    { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(300);
 
   const bad = [];
   const stats = await page.locator('#stats').innerText();
@@ -351,6 +357,11 @@ for (const w of [320, 390, 1180]) {
 
   const posRows = await page.locator('#positions tbody tr').count();
   if (posRows !== 1) bad.push('持倉表應該有 1 列，實際 ' + posRows);
+  // 浮動損益：(3030−3000)×0.3 = 9，扣開倉費 0.4、平倉費 3030×0.3×0.00045 ≈ 0.41 → +$8.19
+  const posTxt = await page.locator('#positions').innerText();
+  if (!/3030/.test(posTxt)) bad.push('持倉沒有顯示現價');
+  if (!/\+\$8\.19/.test(posTxt)) bad.push('浮動損益算錯: ' + posTxt.replace(/\s+/g, ' ').slice(0, 160));
+  if (!/含浮動損益[\s\S]*\$/.test(stats)) bad.push('統計沒有顯示含浮動的權益');
   const statusTxt = await page.locator('#status').innerText();
   if (!/觀望/.test(statusTxt) || !/持倉中/.test(statusTxt) || !/不做/.test(statusTxt)) {
     bad.push('各幣狀態沒有正確顯示');

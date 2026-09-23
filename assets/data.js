@@ -438,6 +438,7 @@
     activeName: function () { return active.name; },
     snapshot: snapshot,
     livePrice: livePrice,
+    ticker: function (sym) { return withFallback('ticker', [sym]); },
     klinesBatch: klinesBatch,
     history: history,
     allTickers: function () { return withFallback('allTickers', []); },

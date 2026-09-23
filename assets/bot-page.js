@@ -18,20 +18,71 @@
   function C(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
   }
+  // 一律用使用者電腦的時區（台灣就是 UTC+8），不要顯示 UTC —— 會以為機器人停在幾小時前
   function when(ts) {
     if (!isNum(ts)) return '—';
-    return new Date(ts).toISOString().replace('T', ' ').slice(0, 16);
+    var d = new Date(ts), z = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' +
+           z(d.getHours()) + ':' + z(d.getMinutes());
   }
+  function hm(ts) { return when(ts).slice(11); }
 
   var state = null;
+
+  /* ---------- 即時價格 ----------
+   * 狀態檔只有機器人跑的時候（每小時一次）才會更新；持倉的現價與浮動損益在這裡每 10 秒抓一次。
+   * 這只是顯示用，機器人的出場判斷不看這裡 —— 它每輪用 15 分 K 的最高最低價檢查止損。 */
+  var LIVE_MS = 10000;
+  var live = {};           // sym → { price, at }
+  var liveErr = '';
+  var liveBusy = false;
+
+  function openSyms() { return state && state.positions ? Object.keys(state.positions) : []; }
+
+  function pollLive() {
+    var syms = openSyms();
+    if (liveBusy || !syms.length || !window.DATA || document.hidden) return;
+    liveBusy = true;
+    Promise.all(syms.map(function (sym) {
+      return DATA.ticker(sym)
+        .then(function (t) { if (t && isNum(t.last) && t.last > 0) live[sym] = { price: t.last, at: Date.now() }; })
+        .catch(function (e) { liveErr = e.message; });
+    })).then(function () {
+      liveBusy = false;
+      renderStats(); renderPositions(); drawCurve();
+    });
+  }
+
+  /** 全部持倉都有現價時，回傳含浮動損益的權益；少一個就回 null（不要拿一半的數字騙人） */
+  function markedEquity() {
+    if (!state) return null;
+    var syms = openSyms(), eq = state.equity, fee = state.config.feeRate;
+    for (var i = 0; i < syms.length; i++) {
+      var u = BOT.unrealized(state.positions[syms[i]], live[syms[i]] && live[syms[i]].price, fee);
+      if (!u) return null;
+      eq += u.equityDelta;
+    }
+    return eq;
+  }
+
+  /** 排程是每小時第 7 分；GitHub 常常晚 5–20 分鐘 */
+  function nextRun(last) {
+    if (!isNum(last)) return null;
+    var h = 3600e3, t = Math.floor(last / h) * h + 7 * 60e3;
+    return t <= last ? t + h : t;
+  }
 
   /* ---------- 成績 ---------- */
   function renderStats() {
     if (!state) { $('stats').innerHTML = ''; $('warn').innerHTML = ''; return; }
     var s = BOT.stats(state);
+    var me = s.openCount ? markedEquity() : null;
     $('stats').innerHTML =
-      kv('權益', '$' + f(s.equity), s.equity >= s.startEquity ? 'safe' : 'danger',
-         '起始 $' + f(s.startEquity, 0)) +
+      kv(s.openCount ? '帳上權益' : '權益', '$' + f(s.equity), s.equity >= s.startEquity ? 'safe' : 'danger',
+         s.openCount ? '已扣開倉手續費' : '起始 $' + f(s.startEquity, 0)) +
+      (s.openCount ? kv('含浮動損益', me === null ? '—' : '$' + f(me),
+         me === null ? '' : me >= s.startEquity ? 'safe' : 'danger',
+         me === null ? (liveErr ? '抓不到現價' : '抓現價中…') : '現在全部平倉的話') : '') +
       kv('報酬', (s.returnPct >= 0 ? '+' : '') + pct(s.returnPct, 2),
          s.returnPct >= 0 ? 'safe' : 'danger') +
       kv('交易筆數', String(s.n), s.enough ? 'safe' : 'warn',
@@ -49,9 +100,14 @@
       kv('已運行', f(s.runningDays, 1) + ' 天', '', '第 ' + s.ticks + ' 輪');
 
     var w = [];
-    if (!s.n) {
+    if (!s.n && s.openCount) {
+      w.push(alertBox('info', '有持倉，但還沒有平倉的單',
+        '「交易筆數」只算已經平倉的。帳上少的 $' + f(s.feesPaid + s.fundingPaid) + ' 是開倉手續費，不是虧損。' +
+        '規則 v2 沒有固定止盈，只有打到止損或移動止損才出場，回測裡一筆的中位數大約抱 28 小時。<br>' +
+        '機器人每小時跑一輪；持倉的現價在這頁每 10 秒更新。'));
+    } else if (!s.n) {
       w.push(alertBox('info', '還沒有成交紀錄',
-        '機器人只在「日線與 4H 同向、15m 時機到位」時才進場，多數時間是空手的。' +
+        '機器人只在「日線在 EMA200 之上、4H 多頭、回檔到 EMA20 後站回」時才進場，多數時間是空手的。' +
         '這是設計，不是壞掉 —— 不做也是一種結論。'));
     } else if (!s.enough) {
       w.push(alertBox('warn', '樣本還不夠',
@@ -95,9 +151,16 @@
     var padL = 6, padR = 52, padT = 10, padB = 14;
     var pw = Math.max(10, w - padL - padR), ph = Math.max(10, h - padT - padB);
     var lo = Infinity, hi = -Infinity;
+    var me = markedEquity();
+    var tail = me !== null && openSyms().length ? me : null;
     c.forEach(function (p) { lo = Math.min(lo, p.equity); hi = Math.max(hi, p.equity); });
+    if (tail !== null) { lo = Math.min(lo, tail); hi = Math.max(hi, tail); }
     lo = Math.min(lo, start); hi = Math.max(hi, start);
-    var pad = (hi - lo) * 0.1 || 1;
+    // 縱軸至少涵蓋起始本金的 ±2%（= 每筆 1% 風險的 ±2R）。
+    // 不夾的話，$0.09 的手續費會被放大成滿版的「暴跌」。
+    var minSpan = start * 0.04;
+    if (hi - lo < minSpan) { var mid = (hi + lo) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; }
+    var pad = (hi - lo) * 0.1;
     lo -= pad; hi += pad;
     var yOf = function (v) { return padT + (hi - v) / Math.max(hi - lo, 1e-9) * ph; };
     var xOf = function (i) { return padL + i / Math.max(1, c.length - 1) * pw; };
@@ -124,6 +187,17 @@
     c.forEach(function (p, i) { i ? ctx.lineTo(xOf(i), yOf(p.equity)) : ctx.moveTo(xOf(i), yOf(p.equity)); });
     ctx.stroke();
 
+    // 含浮動損益的「現在」：從最後一點拉一段虛線到右緣的圓點
+    if (tail !== null) {
+      var xe = padL + pw, ye = yOf(tail);
+      ctx.save(); ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = tail >= start ? C('--long') : C('--short'); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(xOf(c.length - 1), yOf(c[c.length - 1].equity)); ctx.lineTo(xe, ye); ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.beginPath(); ctx.arc(xe, ye, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
     ctx.font = '10px ' + C('--mono'); ctx.fillStyle = C('--text-dim');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     var yHi = yOf(hi) + 6, yLo = yOf(lo) - 6;
@@ -134,6 +208,7 @@
     }
     $('legend').innerHTML = '<span>權益曲線（虛線 = 起始本金）</span>' +
       '<span style="color:var(--accent)">底色 = 持倉中</span>' +
+      (tail !== null ? '<span>虛線圓點 = 現在（含浮動）</span>' : '') +
       '<span>' + when(c[0].t) + ' ~ ' + when(c[c.length - 1].t) + '</span>';
   }
 
@@ -145,19 +220,27 @@
     var pos = state && state.positions ? state.positions : {};
     var keys = Object.keys(pos);
     if (!keys.length) {
-      $('positions').innerHTML = '<div class="empty">空手。要等日線、4H、15m 三個框架對齊才進場。</div>';
+      $('positions').innerHTML = '<div class="empty">空手。等日線多頭、4H 回檔到 EMA20 再站回才進場。</div>';
       return;
     }
+    var fee = state.config.feeRate;
     $('positions').innerHTML =
-      '<table class="tbl"><thead><tr><th>幣</th><th>方向</th><th>進場</th><th>止損</th><th>止盈</th>' +
-      '<th>名目</th><th>風險</th><th>設定槓桿</th><th>開倉時間</th></tr></thead><tbody>' +
+      '<table class="tbl"><thead><tr><th>幣</th><th>方向</th><th>進場</th><th>現價</th><th>浮動損益</th><th>R</th>' +
+      '<th>止損</th><th>距止損</th><th>名目</th><th>風險</th><th>設定槓桿</th><th>開倉時間</th></tr></thead><tbody>' +
       keys.map(function (k) {
-        var p = pos[k];
+        var p = pos[k], lv = live[k];
+        var u = BOT.unrealized(p, lv && lv.price, fee);
+        var uc = !u ? 'inherit' : u.pnl >= 0 ? 'var(--long)' : 'var(--short)';
+        // 止損已經被移上來鎖住獲利時，標成「保本以上」
+        var locked = p.side === 'long' ? p.stop >= p.entry : p.stop <= p.entry;
         return '<tr class="' + p.side + '-row"><td>' + short(k) + '</td>' +
           '<td>' + (p.side === 'long' ? '多' : '空') + '</td>' +
           '<td>' + px(p.entry) + '</td>' +
-          '<td style="color:var(--stop)">' + px(p.stop) + '</td>' +
-          '<td style="color:var(--safe)">' + px(p.tp) + '</td>' +
+          '<td' + (lv ? ' title="' + hm(lv.at) + ' 更新"' : '') + '>' + (u ? px(u.price) : '…') + '</td>' +
+          '<td style="color:' + uc + '">' + (u ? (u.pnl >= 0 ? '+' : '−') + '$' + f(Math.abs(u.pnl)) : '—') + '</td>' +
+          '<td style="color:' + uc + '">' + (u && isNum(u.r) ? sgn(u.r, 2) : '—') + '</td>' +
+          '<td style="color:var(--stop)">' + px(p.stop) + (locked ? ' <span style="color:var(--long)">保本↑</span>' : '') + '</td>' +
+          '<td>' + (u && isNum(u.toStopPct) ? pct(u.toStopPct, 2) : '—') + '</td>' +
           '<td>$' + f(p.notional) + '</td>' +
           '<td style="color:var(--short)">−$' + f(p.riskUsd) + '</td>' +
           '<td>' + (p.exchangeLeverage || 1) + 'x</td>' +
@@ -227,7 +310,7 @@
           '<td>' + px(x.exit) + '</td>' +
           '<td style="color:' + c + '">' + (x.pnl >= 0 ? '+' : '') + f(x.pnl) + '</td>' +
           '<td style="color:' + c + '">' + (isNum(x.r) ? (x.r >= 0 ? '+' : '') + x.r.toFixed(2) : '—') + '</td>' +
-          '<td>' + (x.why === 'tp' ? '止盈' : x.why === 'stop' ? '止損' : '平倉') + '</td>' +
+          '<td>' + ({ tp: '止盈', stop: '止損', trail: '移動止損' }[x.why] || '平倉') + '</td>' +
           '<td>$' + f(x.equityAfter) + '</td></tr>';
       }).join('') + '</tbody></table>';
   }
@@ -239,7 +322,7 @@
       var fresh = isNum(state.lastTick) && (Date.now() - state.lastTick) < 3 * 3600 * 1000;
       dot.className = 'dot ' + (fresh ? 'live' : 'poll');
       dot.title = fresh ? '最近一輪在三小時內' : '超過三小時沒有更新';
-      $('src-name').textContent = '最後更新 ' + when(state.lastTick);
+      $('src-name').textContent = '上一輪 ' + hm(state.lastTick) + ' · 下一輪約 ' + hm(nextRun(state.lastTick));
     } else {
       dot.className = 'dot dead';
       $('src-name').textContent = '未載入';
@@ -394,6 +477,7 @@
     state = BOT.migrate(raw);      // 舊版單一部位的狀態檔也能讀
     $('load-status').textContent = '已載入（' + from + '）';
     renderAll();
+    pollLive();
   }
 
   function load() {
@@ -441,4 +525,8 @@
   renderAll();
   load();
   loadBacktest();
+  setInterval(pollLive, LIVE_MS);
+  // 狀態檔每 5 分鐘重抓一次：機器人跑完一輪，不用手動重新整理就看得到
+  setInterval(function () { if (!document.hidden) load(); }, 5 * 60e3);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) pollLive(); });
 })();
