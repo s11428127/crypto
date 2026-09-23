@@ -262,37 +262,57 @@ for (const w of [320, 390, 1180]) {
 
 /* ═══ 機器人檢視頁 ═══ */
 function fakeState(nTrades) {
-  const start = 100;
+  const start = 100, syms = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
   let eq = start, t0 = Date.UTC(2026, 8, 1), curve = [], trades = [], notes = [];
   for (let i = 0; i < nTrades; i++) {
     const win = i % 3 !== 0;                       // 勝率約 67%
     const risk = eq * 0.01;
-    const pnl = win ? risk * 1.45 : -risk * 1.03;  // 扣過手續費的 R
+    const pnl = win ? risk * 1.45 : -risk * 1.03;
     eq += pnl;
+    const sym = syms[i % 3];
     const openedAt = t0 + i * 6 * 3600e3;
-    trades.push({ openedAt, closedAt: openedAt + 4 * 3600e3, side: i % 2 ? 'short' : 'long',
+    trades.push({ symbol: sym, openedAt, closedAt: openedAt + 4 * 3600e3, side: i % 2 ? 'short' : 'long',
       entry: 80000 + i * 10, stop: 79000 + i * 10, tp: 81500 + i * 10,
       exit: win ? 81500 + i * 10 : 79000 + i * 10, qty: 0.002, notional: 160,
-      pnl, r: pnl / risk, why: win ? 'tp' : 'stop', equityAfter: eq });
-    curve.push({ t: openedAt, equity: eq, hasPosition: i % 4 === 0 });
-    notes.unshift({ t: openedAt, kind: win ? 'win' : 'loss',
-      text: (win ? '止盈出場' : '止損出場') + ' @ ' + (80000 + i * 10) });
+      pnl, r: pnl / risk, funding: 0.01, why: win ? 'tp' : 'stop', equityAfter: eq });
+    curve.push({ t: openedAt, equity: eq, open: i % 4 === 0 ? 1 : 0 });
+    notes.unshift({ t: openedAt, kind: win ? 'win' : 'loss', symbol: sym,
+      text: sym.replace('USDT', '') + (win ? ' 止盈出場' : ' 止損出場') });
   }
   return {
-    version: 1,
-    config: { symbol: 'BTCUSDT', startEquity: start, riskPct: 1, maxLeverage: 5,
-              feeRate: 0.00045, fundingPer8h: 0.0001, rMultiples: [1.5, 3],
-              filters: { minQty: 0.001, stepSize: 0.001, minNotional: 100 } },
+    version: 2,
+    config: { symbols: syms, startEquity: start, riskPct: 1, maxRiskPct: 5, maxPositions: 3,
+              maxLeverage: 5, feeRate: 0.00045, fundingPer8h: 0.0001, rMultiples: [1.5, 3],
+              filters: { '*': { minQty: 0, stepSize: 0, minNotional: 5 } } },
     equity: eq,
-    position: { side: 'long', entry: 81000, stop: 79800, tp: 82800, tp2: 84600,
-                qty: 0.002, notional: 162, exchangeLeverage: 2, liqPrice: 40700,
-                riskUsd: 2.4, entryFee: 0.07, openedAt: t0 + nTrades * 6 * 3600e3,
-                nextFundingAt: t0 + nTrades * 6 * 3600e3 + 8 * 3600e3,
-                why: '日線與 4H 同為多頭；15m 同步轉強' },
+    positions: {
+      ETHUSDT: { symbol: 'ETHUSDT', side: 'long', entry: 3000, stop: 2940, tp: 3090, qty: 0.3,
+                 notional: 900, exchangeLeverage: 1, liqPrice: 0, riskUsd: 1.2, entryFee: 0.4,
+                 openedAt: t0 + nTrades * 6 * 3600e3, nextFundingAt: t0 + nTrades * 6 * 3600e3 + 8 * 3600e3,
+                 why: '日線與 4H 同為多頭；15m 同步轉強' }
+    },
+    status: {
+      BTCUSDT: { t: Date.now(), type: 'wait', reason: '15m 仍在回落，等止跌再進，不要接刀' },
+      ETHUSDT: { t: Date.now(), type: 'hold', reason: '續抱' },
+      SOLUSDT: { t: Date.now(), type: 'blocked', reason: '加上這筆，帳戶總名目會超過 5 倍權益' }
+    },
     trades, curve, notes,
     feesPaid: 1.4, fundingPaid: 0.6, ticks: nTrades * 6,
     lastTick: Date.now() - 20 * 60000,
     createdAt: t0
+  };
+}
+
+function fakeBacktest() {
+  const mkRow = (symbol, n, winRate, avgR) => ({ symbol, n, winRate, avgR, totalR: avgR * n,
+    returnPct: avgR * n, maxDD: 6.2, profitFactor: avgR > 0 ? 1.2 : 0.8, maxLossStreak: 5,
+    from: Date.UTC(2026, 5, 28), to: Date.UTC(2026, 8, 23), trades: [] });
+  return {
+    generatedAt: Date.now() - 3600e3, source: 'Kraken',
+    pooled: { n: 60, winRate: 40, avgR: -0.047, totalR: -2.8, profitFactor: 0.91,
+              maxLossStreak: 9, maxDDR: 12.5 },
+    symbols: [mkRow('BTCUSDT', 27, 29.6, -0.376), mkRow('AVAXUSDT', 17, 52.9, 0.309),
+              { symbol: 'DOTUSDT', error: 'EQuery:Unknown asset pair' }]
   };
 }
 
@@ -303,6 +323,8 @@ for (const w of [320, 390, 1180]) {
   const st = fakeState(35);
   await page.route('**/bot/state.json*', r => r.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify(st) }));
+  await page.route('**/bot/backtest.json*', r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(fakeBacktest()) }));
   await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() =>
     document.querySelector('#stats > div'), { timeout: 10000 }).catch(() => {});
@@ -314,9 +336,19 @@ for (const w of [320, 390, 1180]) {
   if (!/35/.test(stats)) bad.push('交易筆數不對: ' + stats.replace(/\n/g, ' ').slice(0, 80));
   if (!/樣本足夠/.test(stats)) bad.push('35 筆應該標記樣本足夠');
 
-  const posTxt = await page.locator('#position').innerText();
-  if (!/持有多單/.test(posTxt)) bad.push('沒有顯示持倉');
-  if (!/爆倉價/.test(posTxt)) bad.push('持倉缺少爆倉價');
+  const posRows = await page.locator('#positions tbody tr').count();
+  if (posRows !== 1) bad.push('持倉表應該有 1 列，實際 ' + posRows);
+  const statusTxt = await page.locator('#status').innerText();
+  if (!/觀望/.test(statusTxt) || !/持倉中/.test(statusTxt) || !/不做/.test(statusTxt)) {
+    bad.push('各幣狀態沒有正確顯示');
+  }
+  const btTxt = await page.locator('#bt-pool').innerText();
+  if (!/合計成交/.test(btTxt) || !/-0\.047 R/.test(btTxt)) bad.push('回測合計沒顯示: ' + btTxt.slice(0, 60));
+  const btRows = await page.locator('#bt-table tbody tr').count();
+  if (btRows !== 3) bad.push('回測表應該有 3 列，實際 ' + btRows);
+  if (!/Unknown asset pair/.test(await page.locator('#bt-table').innerText())) {
+    bad.push('回測失敗的幣沒有顯示原因');
+  }
 
   const tradeRows = await page.locator('#trades tbody tr').count();
   if (tradeRows === 0) bad.push('成交紀錄是空的');
@@ -344,6 +376,7 @@ for (const w of [320, 390, 1180]) {
   const page = await ctx.newPage();
   const errs = []; collectErrors(page, errs);
   await page.route('**/bot/state.json*', r => r.fulfill({ status: 404, body: 'not found' }));
+  await page.route('**/bot/backtest.json*', r => r.fulfill({ status: 404, body: 'not found' }));
   await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
   const bad = [];
@@ -354,8 +387,34 @@ for (const w of [320, 390, 1180]) {
   if (!/還沒有狀態檔/.test(warn)) bad.push('沒有顯示「還沒有狀態檔」的說明');
   const dot = await page.locator('#conn-dot').getAttribute('class');
   if (!/dead/.test(dot)) bad.push('連線指示燈應該是未載入狀態');
+  if (!/還沒有回測結果/.test(await page.locator('#bt-table').innerText())) {
+    bad.push('沒有回測結果時沒有說明');
+  }
   if (errs.length) bad.push('console: ' + errs.join(' | '));
   report('bot.html 沒有狀態檔', bad);
+  await ctx.close();
+}
+
+/* 舊版（v1 單一部位）的狀態檔也要能正常顯示 */
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+  const page = await ctx.newPage();
+  const errs = []; collectErrors(page, errs);
+  const v1 = { version: 1, config: { symbol: 'BTCUSDT', startEquity: 100, riskPct: 1, maxLeverage: 5 },
+    equity: 100, trades: [], notes: [], feesPaid: 0, fundingPaid: 0, ticks: 2, createdAt: Date.now(),
+    lastTick: Date.now(), curve: [{ t: 1, equity: 100, hasPosition: true }, { t: 2, equity: 100, hasPosition: true }],
+    position: { side: 'long', entry: 80000, stop: 78000, tp: 83000, qty: 0.002, notional: 160,
+                riskUsd: 4, entryFee: 0.07, openedAt: Date.now(), exchangeLeverage: 2 } };
+  await page.route('**/bot/state.json*', r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(v1) }));
+  await page.route('**/bot/backtest.json*', r => r.fulfill({ status: 404, body: '' }));
+  await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(900);
+  const bad = [];
+  if ((await page.locator('#positions tbody tr').count()) !== 1) bad.push('v1 的部位沒有顯示出來');
+  const real = errs.filter(x => !/Failed to load resource/.test(x));
+  if (real.length) bad.push('console: ' + real.join(' | '));
+  report('bot.html 讀舊版狀態檔', bad);
   await ctx.close();
 }
 
@@ -367,6 +426,7 @@ for (const w of [320, 390, 1180]) {
   st.trades = st.trades.map(t => ({ ...t, pnl: -Math.abs(t.pnl), r: -Math.abs(t.r) }));
   await page.route('**/bot/state.json*', r => r.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify(st) }));
+  await page.route('**/bot/backtest.json*', r => r.fulfill({ status: 404, body: '' }));
   await page.goto(BASE + 'bot.html', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(800);
   const warn = await page.locator('#warn').innerText();

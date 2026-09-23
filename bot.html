@@ -33,7 +33,18 @@
   </div>
 
   <div class="sec">
-    <h2>成績</h2>
+    <h2>歷史回測（真實 K 線）</h2>
+    <p class="hint">
+      不用等模擬單慢慢累積：用各幣過去的真實 4H 與日線，把同一套規則逐根跑一遍。
+      每個幣各用一個 $100 的獨立帳戶；回測只有「日線 + 4H」定方向，沒有 15m 時機過濾。
+    </p>
+    <div class="kv" id="bt-pool"></div>
+    <div id="bt-warn"></div>
+    <div class="tbl-wrap" id="bt-table" style="margin-top:12px"></div>
+  </div>
+
+  <div class="sec">
+    <h2>模擬單成績（即時）</h2>
     <div class="kv" id="stats"></div>
     <canvas class="panel" id="curve"></canvas>
     <div class="ma-legend" id="legend"></div>
@@ -41,12 +52,17 @@
   </div>
 
   <div class="sec">
-    <h2>目前狀態</h2>
-    <div class="plan" id="position"></div>
+    <h2>目前持倉</h2>
+    <div class="tbl-wrap" id="positions"></div>
   </div>
 
   <div class="sec">
-    <h2>最近動作</h2>
+    <h2>各幣狀態</h2>
+    <div class="tbl-wrap" id="status"></div>
+  </div>
+
+  <div class="sec">
+    <h2>開平倉事件</h2>
     <div class="tbl-wrap" id="notes"></div>
   </div>
 
@@ -58,7 +74,7 @@
   <div class="sec">
     <h2>載入狀態檔</h2>
     <p class="hint">
-      機器人由 GitHub Actions 每小時跑一輪，結果寫在 repo 的 <code>bot/state.json</code>。
+      機器人由 GitHub Actions 每小時跑一輪，同時盯多個幣，結果寫在 repo 的 <code>bot/state.json</code>。
       這一頁會自動去讀；讀不到的話可以手動選檔案。
     </p>
     <div class="bar-actions">

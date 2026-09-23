@@ -45,6 +45,7 @@
       kv('最長連敗', s.n ? s.maxLossStreak + ' 筆' : '—', s.maxLossStreak >= 6 ? 'danger' : '') +
       kv('成本合計', '$' + f(s.feesPaid + s.fundingPaid), '',
          '手續費 $' + f(s.feesPaid) + ' + 資金費 $' + f(s.fundingPaid)) +
+      kv('持倉中', s.openCount + ' 筆', '', '上限 ' + (state.config.maxPositions || 3)) +
       kv('已運行', f(s.runningDays, 1) + ' 天', '', '第 ' + s.ticks + ' 輪');
 
     var w = [];
@@ -136,44 +137,66 @@
       '<span>' + when(c[0].t) + ' ~ ' + when(c[c.length - 1].t) + '</span>';
   }
 
-  /* ---------- 目前部位 ---------- */
-  function renderPosition() {
-    if (!state) { $('position').innerHTML = ''; return; }
-    var p = state.position;
-    if (!p) {
-      $('position').innerHTML =
-        '<div class="plan-head"><span class="plan-side wait">空手</span>' +
-        '<span class="plan-why">' +
-        (state.notes && state.notes.length ? state.notes[0].text : '等待訊號') +
-        '</span></div>';
+  function short(sym) { return String(sym || '').replace(/USDT$/, ''); }
+  function px(v) { return isNum(v) ? String(+v.toPrecision(6)) : '—'; }
+
+  /* ---------- 目前持倉 ---------- */
+  function renderPositions() {
+    var pos = state && state.positions ? state.positions : {};
+    var keys = Object.keys(pos);
+    if (!keys.length) {
+      $('positions').innerHTML = '<div class="empty">空手。要等日線、4H、15m 三個框架對齊才進場。</div>';
       return;
     }
-    var rows = [
-      ['方向', p.side === 'long' ? '做多' : '做空', 'hl'],
-      ['進場', f(p.entry, 1), ''],
-      ['止損', f(p.stop, 1), 'stop'],
-      ['止盈', f(p.tp, 1), 'tp'],
-      ['數量', String(p.qty), ''],
-      ['名目', '$' + f(p.notional), ''],
-      ['設定槓桿', p.exchangeLeverage + 'x', ''],
-      ['爆倉價', p.liqPrice > 0 ? f(p.liqPrice, 1) : '不會爆倉', 'liq'],
-      ['這筆的風險', '−$' + f(p.riskUsd), ''],
-      ['開倉時間', when(p.openedAt), '']
-    ];
-    $('position').innerHTML =
-      '<div class="plan-head"><span class="plan-side ' + p.side + '">' +
-      (p.side === 'long' ? '持有多單' : '持有空單') + '</span>' +
-      '<span class="plan-why">' + (p.why || '') + '</span></div>' +
-      '<div class="plan-body">' + rows.map(function (r) {
-        return '<div class="prow ' + r[2] + '"><span class="k">' + r[0] +
-               '</span><span class="v">' + r[1] + '</span></div>';
-      }).join('') + '</div>';
+    $('positions').innerHTML =
+      '<table class="tbl"><thead><tr><th>幣</th><th>方向</th><th>進場</th><th>止損</th><th>止盈</th>' +
+      '<th>名目</th><th>風險</th><th>設定槓桿</th><th>開倉時間</th></tr></thead><tbody>' +
+      keys.map(function (k) {
+        var p = pos[k];
+        return '<tr class="' + p.side + '-row"><td>' + short(k) + '</td>' +
+          '<td>' + (p.side === 'long' ? '多' : '空') + '</td>' +
+          '<td>' + px(p.entry) + '</td>' +
+          '<td style="color:var(--stop)">' + px(p.stop) + '</td>' +
+          '<td style="color:var(--safe)">' + px(p.tp) + '</td>' +
+          '<td>$' + f(p.notional) + '</td>' +
+          '<td style="color:var(--short)">−$' + f(p.riskUsd) + '</td>' +
+          '<td>' + (p.exchangeLeverage || 1) + 'x</td>' +
+          '<td>' + when(p.openedAt) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  /* ---------- 各幣狀態 ---------- */
+  var STATUS_TXT = { open: '開倉', closed: '剛平倉', hold: '持倉中', wait: '觀望',
+                     blocked: '不做', skip: '跳過', error: '錯誤' };
+  var STATUS_COLOR = { open: 'var(--accent)', hold: 'var(--accent)', closed: 'var(--text)',
+                       wait: 'var(--text-dim)', blocked: 'var(--warn)', skip: 'var(--text-dim)',
+                       error: 'var(--short)' };
+  function renderStatus() {
+    var st = state && state.status ? state.status : {};
+    var syms = state ? BOT.symbolsOf(state.config) : [];
+    Object.keys(st).forEach(function (k) { if (syms.indexOf(k) < 0) syms.push(k); });
+    if (!syms.length) { $('status').innerHTML = '<div class="empty">還沒有資料</div>'; return; }
+    var by = BOT.stats(state).bySymbol;
+    $('status').innerHTML =
+      '<table class="tbl"><thead><tr><th>幣</th><th>狀態</th><th>成交</th><th>合計 R</th>' +
+      '<th style="text-align:left">說明</th></tr></thead><tbody>' +
+      syms.map(function (k) {
+        var x = st[k] || {}, b = by[k];
+        var type = state.positions && state.positions[k] ? 'hold' : x.type;
+        return '<tr><td>' + short(k) + '</td>' +
+          '<td style="color:' + (STATUS_COLOR[type] || 'inherit') + '">' + (STATUS_TXT[type] || '—') + '</td>' +
+          '<td>' + (b ? b.n : 0) + '</td>' +
+          '<td style="color:' + (b && b.totalR > 0 ? 'var(--long)' : b && b.totalR < 0 ? 'var(--short)' : 'inherit') + '">' +
+            (b ? (b.totalR >= 0 ? '+' : '') + b.totalR.toFixed(2) : '—') + '</td>' +
+          '<td style="text-align:left;white-space:normal;font-family:inherit;min-width:180px">' +
+            (x.reason || '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
   }
 
   /* ---------- 動作紀錄 ---------- */
   function renderNotes() {
     var n = state && state.notes ? state.notes : [];
-    if (!n.length) { $('notes').innerHTML = '<div class="empty">還沒有紀錄</div>'; return; }
+    if (!n.length) { $('notes').innerHTML = '<div class="empty">還沒有開平倉事件</div>'; return; }
     var color = { open: 'var(--accent)', win: 'var(--long)', loss: 'var(--short)', idle: 'var(--text-dim)' };
     $('notes').innerHTML =
       '<table class="tbl"><thead><tr><th>時間</th><th style="text-align:left">動作</th></tr></thead><tbody>' +
@@ -192,15 +215,16 @@
       return;
     }
     $('trades').innerHTML =
-      '<table class="tbl"><thead><tr><th>開倉</th><th>方向</th><th>進場</th><th>出場</th>' +
+      '<table class="tbl"><thead><tr><th>幣</th><th>開倉</th><th>方向</th><th>進場</th><th>出場</th>' +
       '<th>損益</th><th>R</th><th>原因</th><th>權益</th></tr></thead><tbody>' +
       t.slice().reverse().slice(0, 50).map(function (x) {
         var c = x.pnl > 0 ? 'var(--long)' : 'var(--short)';
         return '<tr class="' + x.side + '-row">' +
+          '<td>' + short(x.symbol) + '</td>' +
           '<td>' + when(x.openedAt) + '</td>' +
           '<td>' + (x.side === 'long' ? '多' : '空') + '</td>' +
-          '<td>' + f(x.entry, 1) + '</td>' +
-          '<td>' + f(x.exit, 1) + '</td>' +
+          '<td>' + px(x.entry) + '</td>' +
+          '<td>' + px(x.exit) + '</td>' +
           '<td style="color:' + c + '">' + (x.pnl >= 0 ? '+' : '') + f(x.pnl) + '</td>' +
           '<td style="color:' + c + '">' + (isNum(x.r) ? (x.r >= 0 ? '+' : '') + x.r.toFixed(2) : '—') + '</td>' +
           '<td>' + (x.why === 'tp' ? '止盈' : x.why === 'stop' ? '止損' : '平倉') + '</td>' +
@@ -209,7 +233,7 @@
   }
 
   function renderAll() {
-    renderStats(); drawCurve(); renderPosition(); renderNotes(); renderTrades();
+    renderStats(); drawCurve(); renderPositions(); renderStatus(); renderNotes(); renderTrades();
     var dot = $('conn-dot');
     if (state) {
       var fresh = isNum(state.lastTick) && (Date.now() - state.lastTick) < 3 * 3600 * 1000;
@@ -220,6 +244,76 @@
       dot.className = 'dot dead';
       $('src-name').textContent = '未載入';
     }
+  }
+
+  /* ---------- 歷史回測 ---------- */
+  var backtest = null;
+  function renderBacktest() {
+    if (!backtest) {
+      $('bt-pool').innerHTML = '';
+      $('bt-table').innerHTML = '<div class="empty">還沒有回測結果。在 GitHub 的 Actions 分頁手動觸發「歷史回測」，幾分鐘就會跑完。</div>';
+      $('bt-warn').innerHTML = '';
+      return;
+    }
+    var p = backtest.pooled || {};
+    $('bt-pool').innerHTML =
+      kv('合計成交', String(p.n || 0), p.n >= 30 ? 'safe' : 'warn', p.n >= 30 ? '樣本足夠' : '未滿 30 筆') +
+      kv('勝率', p.n ? pct(p.winRate) : '—', p.winRate >= 50 ? 'safe' : '') +
+      kv('平均每筆', p.n ? (p.avgR >= 0 ? '+' : '') + p.avgR.toFixed(3) + ' R' : '—',
+         p.avgR > 0 ? 'safe' : p.n ? 'danger' : '', '已扣手續費與資金費') +
+      kv('總計', p.n ? (p.totalR >= 0 ? '+' : '') + p.totalR.toFixed(1) + ' R' : '—',
+         p.totalR > 0 ? 'safe' : p.n ? 'danger' : '') +
+      kv('獲利因子', p.profitFactor === null || p.profitFactor === undefined ? (p.n ? '∞' : '—') : f(p.profitFactor),
+         p.profitFactor > 1 ? 'safe' : p.n ? 'danger' : '') +
+      kv('最長連敗', p.n ? p.maxLossStreak + ' 筆' : '—', p.maxLossStreak >= 8 ? 'danger' : '') +
+      kv('R 曲線回撤', p.n ? p.maxDDR.toFixed(1) + ' R' : '—', '') +
+      kv('產生時間', when(backtest.generatedAt), '', backtest.source || '');
+
+    var w = [];
+    if (!p.n) {
+      w.push(alertBox('info', '這段期間一筆訊號都沒有', '規則太嚴或資料不夠長。'));
+    } else if (p.n < 30) {
+      w.push(alertBox('warn', '樣本還不夠', '只有 ' + p.n + ' 筆，勝率的誤差很大，別急著下結論。'));
+    }
+    if (p.n && p.winRate >= 90) {
+      w.push(alertBox('danger', '勝率高得不合理', '真實市場不會這樣，先懷疑程式或資料，不要照著下真錢。'));
+    }
+    if (p.n >= 30 && p.avgR <= 0) {
+      w.push(alertBox('danger', '這套規則在這段歷史上沒有優勢',
+        p.n + ' 筆平均 ' + p.avgR.toFixed(3) + ' R。結論是改規則或不做，不是把部位開大。'));
+    } else if (p.n >= 30 && p.avgR > 0) {
+      w.push(alertBox('safe', '這段歷史上是正期望值',
+        p.n + ' 筆平均 +' + p.avgR.toFixed(3) + ' R。但過去不等於未來，而且回測沒有滑點 —— 真實會比這差。'));
+    }
+    $('bt-warn').innerHTML = w.join('');
+
+    var rows = backtest.symbols || [];
+    $('bt-table').innerHTML =
+      '<table class="tbl"><thead><tr><th>幣</th><th>筆數</th><th>勝率</th><th>平均 R</th>' +
+      '<th>報酬</th><th>最大回撤</th><th>獲利因子</th><th>期間</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        if (r.error) {
+          return '<tr><td>' + short(r.symbol) + '</td><td colspan="7" style="text-align:left;color:var(--short);' +
+                 'white-space:normal;font-family:inherit">' + r.error + '</td></tr>';
+        }
+        var c = r.avgR > 0 ? 'var(--long)' : r.avgR < 0 ? 'var(--short)' : 'inherit';
+        return '<tr><td>' + short(r.symbol) + '</td>' +
+          '<td>' + r.n + '</td>' +
+          '<td>' + (r.n ? pct(r.winRate) : '—') + '</td>' +
+          '<td style="color:' + c + '">' + (r.n ? (r.avgR >= 0 ? '+' : '') + r.avgR.toFixed(3) : '—') + '</td>' +
+          '<td style="color:' + (r.returnPct >= 0 ? 'var(--long)' : 'var(--short)') + '">' +
+            (r.returnPct >= 0 ? '+' : '') + pct(r.returnPct) + '</td>' +
+          '<td>' + pct(r.maxDD) + '</td>' +
+          '<td>' + (r.profitFactor === null ? (r.n ? '∞' : '—') : f(r.profitFactor)) + '</td>' +
+          '<td>' + when(r.from).slice(0, 10) + '~' + when(r.to).slice(5, 10) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function loadBacktest() {
+    fetch('bot/backtest.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { backtest = j; renderBacktest(); })
+      .catch(function () { backtest = null; renderBacktest(); });
   }
 
   /* ---------- 載入 ---------- */
@@ -252,7 +346,7 @@
       });
   }
 
-  $('reload').addEventListener('click', load);
+  $('reload').addEventListener('click', function () { load(); loadBacktest(); });
   $('pick').addEventListener('click', function () { $('file').click(); });
   $('file').addEventListener('change', function (e) {
     var file = e.target.files && e.target.files[0];
@@ -274,4 +368,5 @@
   THEME.init(function () { drawCurve(); });
   renderAll();
   load();
+  loadBacktest();
 })();
