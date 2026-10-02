@@ -40,7 +40,7 @@
   "rules": "v2",
   "allowShort": false
  },
- "equity": 97.59142136258549,
+ "equity": 97.56332489212639,
  "trades": [
   {
    "symbol": "ETHUSDT",
@@ -451,12 +451,17 @@
    "t": 1790904974661,
    "equity": 97.59142136258549,
    "open": 3
+  },
+  {
+   "t": 1790929417962,
+   "equity": 97.56332489212639,
+   "open": 3
   }
  ],
  "feesPaid": 0.8994735707267842,
- "fundingPaid": 0.32577667729338977,
- "ticks": 46,
- "lastTick": 1790904974661,
+ "fundingPaid": 0.3538731477525118,
+ "ticks": 47,
+ "lastTick": 1790929417962,
  "createdAt": 1790150941924,
  "notes": [
   {
@@ -621,21 +626,21 @@
    "symbol": "BTCUSDT",
    "side": "long",
    "entry": 84056.1,
-   "stop": 83046.17441885576,
+   "stop": 84118.57747195836,
    "initStop": 82358.82861929025,
    "initRisk": 1697.2713807097607,
-   "best": 85604,
+   "best": 86865.8,
    "qty": 0.002,
    "notional": 168.1122,
    "riskUsd": 3.3945427614195216,
    "entryFee": 0.09246171,
-   "funding": 0.13448976,
+   "funding": 0.15130098000000003,
    "exchangeLeverage": 2,
    "liqPrice": 42196.837349397596,
    "openedAt": 1790670002131,
-   "lastCheckT": 1790903700000,
-   "lastTrailBarT": 1790884800000,
-   "nextFundingAt": 1790929202131,
+   "lastCheckT": 1790928000000,
+   "lastTrailBarT": 1790913600000,
+   "nextFundingAt": 1790958002131,
    "why": "日線在 EMA200 之上、4H 多頭，回檔到 EMA20 後站回"
   },
   "ADAUSDT": {
@@ -645,107 +650,107 @@
    "stop": 0.23697314117087373,
    "initStop": 0.23697314117087373,
    "initRisk": 0.015743858829126295,
-   "best": 0.256745,
+   "best": 0.257126,
    "qty": 63.46254739973872,
    "notional": 16.038064591219772,
    "riskUsd": 0.9991453871982224,
    "entryFee": 0.008820935525170876,
-   "funding": 0.012830451672975819,
+   "funding": 0.014434258132097796,
    "exchangeLeverage": 1,
    "liqPrice": 0,
    "openedAt": 1790670011995,
-   "lastCheckT": 1790903700000,
-   "lastTrailBarT": 1790884800000,
-   "nextFundingAt": 1790929211995,
+   "lastCheckT": 1790928000000,
+   "lastTrailBarT": 1790913600000,
+   "nextFundingAt": 1790958011995,
    "why": "日線在 EMA200 之上、4H 多頭，回檔到 EMA20 後站回"
   },
   "ETHUSDT": {
    "symbol": "ETHUSDT",
    "side": "long",
    "entry": 2689.29,
-   "stop": 2662.7697329345183,
+   "stop": 2689.29,
    "initStop": 2662.7697329345183,
    "initRisk": 26.520267065481676,
-   "best": 2706.25,
+   "best": 2747.49,
    "qty": 0.036,
    "notional": 96.81443999999999,
    "riskUsd": 0.9547296143573403,
    "entryFee": 0.053247942,
-   "funding": 0,
+   "funding": 0.009681443999999999,
    "exchangeLeverage": 1,
    "liqPrice": 0,
    "openedAt": 1790891137452,
-   "lastCheckT": 1790903700000,
-   "lastTrailBarT": 1790884800000,
-   "nextFundingAt": 1790919937452,
+   "lastCheckT": 1790928000000,
+   "lastTrailBarT": 1790913600000,
+   "nextFundingAt": 1790948737452,
    "why": "日線在 EMA200 之上、4H 多頭，回檔到 EMA20 後站回"
   }
  },
  "status": {
   "BTCUSDT": {
-   "t": 1790904961457,
+   "t": 1790929405918,
    "type": "hold",
-   "reason": "續抱，止損 83046.2（已上移）",
+   "reason": "續抱，止損 84118.6（已上移）",
    "lastBarT": 1790654400000,
    "cooldownUntil": 1790323200000
   },
   "ETHUSDT": {
-   "t": 1790904962938,
+   "t": 1790929407234,
    "type": "hold",
-   "reason": "續抱，止損 2662.77",
+   "reason": "續抱，止損 2689.29（已上移）",
    "lastBarT": 1790870400000,
    "cooldownUntil": 1790812800000
   },
   "SOLUSDT": {
-   "t": 1790904964302,
+   "t": 1790929408550,
    "type": "wait",
-   "reason": "回檔中，等收盤重新站回 EMA20",
-   "lastBarT": 1790884800000,
+   "reason": "離 EMA20 太遠（1.2 ATR），不追價",
+   "lastBarT": 1790913600000,
    "cooldownUntil": 1790251200000
   },
   "XRPUSDT": {
-   "t": 1790904965782,
+   "t": 1790929409947,
    "type": "wait",
-   "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1790884800000
+   "reason": "離 EMA20 太遠（1.0 ATR），不追價",
+   "lastBarT": 1790913600000
   },
   "DOGEUSDT": {
-   "t": 1790904967159,
+   "t": 1790929411258,
    "type": "wait",
-   "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1790884800000
+   "reason": "已達同時持倉上限 3 筆，訊號到了也不加",
+   "lastBarT": 1790913600000
   },
   "ADAUSDT": {
-   "t": 1790904968624,
+   "t": 1790929412580,
    "type": "hold",
    "reason": "續抱，止損 0.236973",
    "lastBarT": 1790654400000
   },
   "LINKUSDT": {
-   "t": 1790904970079,
+   "t": 1790929413986,
    "type": "wait",
    "reason": "回檔中，等收盤重新站回 EMA20",
-   "lastBarT": 1790884800000,
+   "lastBarT": 1790913600000,
    "cooldownUntil": 1790668800000
   },
   "AVAXUSDT": {
-   "t": 1790904971549,
+   "t": 1790929415288,
    "type": "wait",
-   "reason": "回檔中，等收盤重新站回 EMA20",
-   "lastBarT": 1790884800000,
+   "reason": "已達同時持倉上限 3 筆，訊號到了也不加",
+   "lastBarT": 1790913600000,
    "cooldownUntil": 1790856000000
   },
   "LTCUSDT": {
-   "t": 1790904973201,
+   "t": 1790929416646,
    "type": "wait",
-   "reason": "已達同時持倉上限 3 筆，訊號到了也不加",
-   "lastBarT": 1790884800000
+   "reason": "離 EMA20 太遠（1.4 ATR），不追價",
+   "lastBarT": 1790913600000
   },
   "DOTUSDT": {
-   "t": 1790904974660,
+   "t": 1790929417961,
    "type": "wait",
    "reason": "止損後冷卻中，10-02 12:00 UTC 之後才會再進",
-   "lastBarT": 1790884800000,
+   "lastBarT": 1790913600000,
    "cooldownUntil": 1790942400000
   }
  }
