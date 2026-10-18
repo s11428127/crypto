@@ -949,12 +949,17 @@
    "t": 1792320828992,
    "equity": 95.27759471679293,
    "open": 0
+  },
+  {
+   "t": 1792333777407,
+   "equity": 95.27759471679293,
+   "open": 0
   }
  ],
  "feesPaid": 1.3574019949677953,
  "fundingPaid": 0.6315033615295395,
- "ticks": 120,
- "lastTick": 1792320828992,
+ "ticks": 121,
+ "lastTick": 1792333777407,
  "createdAt": 1790150941924,
  "notes": [
   {
@@ -1195,71 +1200,71 @@
  "positions": {},
  "status": {
   "BTCUSDT": {
-   "t": 1792320816736,
+   "t": 1792333765355,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792296000000,
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1790323200000
   },
   "ETHUSDT": {
-   "t": 1792320818339,
+   "t": 1792333766679,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792296000000,
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1791043200000
   },
   "SOLUSDT": {
-   "t": 1792320819644,
+   "t": 1792333768115,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792296000000,
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1791417600000
   },
   "XRPUSDT": {
-   "t": 1792320820954,
+   "t": 1792333769428,
    "type": "wait",
    "reason": "空頭中，但沒有反彈到 EMA20，不追空",
-   "lastBarT": 1792296000000
+   "lastBarT": 1792310400000
   },
   "DOGEUSDT": {
-   "t": 1792320822265,
-   "type": "wait",
-   "reason": "離 EMA20 太遠，不追空",
-   "lastBarT": 1792296000000
-  },
-  "ADAUSDT": {
-   "t": 1792320823724,
+   "t": 1792333770737,
    "type": "wait",
    "reason": "空頭中，但沒有反彈到 EMA20，不追空",
-   "lastBarT": 1792296000000,
+   "lastBarT": 1792310400000
+  },
+  "ADAUSDT": {
+   "t": 1792333772049,
+   "type": "wait",
+   "reason": "空頭中，但沒有反彈到 EMA20，不追空",
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1791043200000
   },
   "LINKUSDT": {
-   "t": 1792320825027,
+   "t": 1792333773358,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792296000000,
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1790668800000
   },
   "AVAXUSDT": {
-   "t": 1792320826352,
+   "t": 1792333774764,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792296000000,
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1791417600000
   },
   "LTCUSDT": {
-   "t": 1792320827673,
+   "t": 1792333776088,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792296000000,
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1791086400000
   },
   "DOTUSDT": {
-   "t": 1792320828992,
+   "t": 1792333777406,
    "type": "wait",
-   "reason": "離 EMA20 太遠，不追空",
-   "lastBarT": 1792296000000,
+   "reason": "空頭中，但沒有反彈到 EMA20，不追空",
+   "lastBarT": 1792310400000,
    "cooldownUntil": 1791921600000
   }
  }
