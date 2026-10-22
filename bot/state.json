@@ -40,7 +40,7 @@
   "rules": "v2",
   "allowShort": false
  },
- "equity": 95.18650206679294,
+ "equity": 93.42556254643729,
  "trades": [
   {
    "symbol": "ETHUSDT",
@@ -345,6 +345,22 @@
    "funding": 0.006881212892739628,
    "why": "stop",
    "equityAfter": 95.27759471679293
+  },
+  {
+   "symbol": "BTCUSDT",
+   "openedAt": 1792643342882,
+   "closedAt": 1792657800000,
+   "side": "long",
+   "entry": 82811.5,
+   "stop": 81976.1171042295,
+   "exit": 81976.1171042295,
+   "qty": 0.002,
+   "notional": 165.623,
+   "pnl": -1.852032170355647,
+   "r": -1.1084929914967108,
+   "funding": 0,
+   "why": "stop",
+   "equityAfter": 93.42556254643729
   }
  ],
  "curve": [
@@ -1049,14 +1065,25 @@
    "t": 1792643355277,
    "equity": 95.18650206679294,
    "open": 1
+  },
+  {
+   "t": 1792663296021,
+   "equity": 93.42556254643729,
+   "open": 0
   }
  ],
- "feesPaid": 1.4484946449677953,
+ "feesPaid": 1.5386683737824478,
  "fundingPaid": 0.6315033615295395,
- "ticks": 140,
- "lastTick": 1792643355277,
+ "ticks": 141,
+ "lastTick": 1792663296021,
  "createdAt": 1790150941924,
  "notes": [
+  {
+   "t": 1792663284057,
+   "kind": "loss",
+   "symbol": "BTCUSDT",
+   "text": "BTC 止損出場 @ 81976.1，-1.85 U"
+  },
   {
    "t": 1792643342882,
    "kind": "open",
@@ -1298,96 +1325,74 @@
    "text": "規則從 v1 換成 v2（只做多），之後的成交都照新規則"
   }
  ],
- "positions": {
-  "BTCUSDT": {
-   "symbol": "BTCUSDT",
-   "side": "long",
-   "entry": 82811.5,
-   "stop": 81976.1171042295,
-   "initStop": 81976.1171042295,
-   "initRisk": 835.3828957704973,
-   "best": 82811.5,
-   "qty": 0.002,
-   "notional": 165.623,
-   "riskUsd": 1.6707657915409946,
-   "entryFee": 0.09109265,
-   "funding": 0,
-   "exchangeLeverage": 2,
-   "liqPrice": 41572.03815261044,
-   "openedAt": 1792643342882,
-   "lastCheckT": 1792643342881,
-   "lastTrailBarT": 1792627200000,
-   "nextFundingAt": 1792672142882,
-   "why": "日線在 EMA200 之上、4H 多頭，回檔到 EMA20 後站回"
-  }
- },
+ "positions": {},
  "status": {
   "BTCUSDT": {
-   "t": 1792643342882,
-   "type": "open",
-   "reason": "日線在 EMA200 之上、4H 多頭，回檔到 EMA20 後站回",
-   "lastBarT": 1792627200000,
-   "cooldownUntil": 1790323200000
+   "t": 1792663284057,
+   "type": "wait",
+   "reason": "止損後冷卻中，10-23 08:00 UTC 之後才會再進",
+   "lastBarT": 1792641600000,
+   "cooldownUntil": 1792742400000
   },
   "ETHUSDT": {
-   "t": 1792643344259,
+   "t": 1792663285371,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792627200000,
+   "lastBarT": 1792641600000,
    "cooldownUntil": 1791043200000
   },
   "SOLUSDT": {
-   "t": 1792643345633,
+   "t": 1792663286685,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792627200000,
+   "lastBarT": 1792641600000,
    "cooldownUntil": 1791417600000
   },
   "XRPUSDT": {
-   "t": 1792643347012,
+   "t": 1792663288063,
    "type": "wait",
    "reason": "日線空頭，4H 不是空頭排列，不做",
-   "lastBarT": 1792627200000
+   "lastBarT": 1792641600000
   },
   "DOGEUSDT": {
-   "t": 1792643348399,
+   "t": 1792663289401,
    "type": "wait",
    "reason": "出現空單訊號，但目前只驗證多單（回測顯示空單沒有優勢）",
-   "lastBarT": 1792627200000
+   "lastBarT": 1792641600000
   },
   "ADAUSDT": {
-   "t": 1792643349767,
+   "t": 1792663290720,
    "type": "wait",
-   "reason": "出現空單訊號，但目前只驗證多單（回測顯示空單沒有優勢）",
-   "lastBarT": 1792627200000,
+   "reason": "離 EMA20 太遠，不追空",
+   "lastBarT": 1792641600000,
    "cooldownUntil": 1791043200000
   },
   "LINKUSDT": {
-   "t": 1792643351145,
+   "t": 1792663292051,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792627200000,
+   "lastBarT": 1792641600000,
    "cooldownUntil": 1790668800000
   },
   "AVAXUSDT": {
-   "t": 1792643352532,
+   "t": 1792663293373,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792627200000,
+   "lastBarT": 1792641600000,
    "cooldownUntil": 1791417600000
   },
   "LTCUSDT": {
-   "t": 1792643353907,
+   "t": 1792663294686,
    "type": "wait",
    "reason": "日線多頭，但 4H 不是多頭排列，等 4H 轉強",
-   "lastBarT": 1792627200000,
+   "lastBarT": 1792641600000,
    "cooldownUntil": 1791086400000
   },
   "DOTUSDT": {
-   "t": 1792643355276,
+   "t": 1792663296020,
    "type": "wait",
    "reason": "出現空單訊號，但目前只驗證多單（回測顯示空單沒有優勢）",
-   "lastBarT": 1792627200000,
+   "lastBarT": 1792641600000,
    "cooldownUntil": 1791921600000
   }
  }
