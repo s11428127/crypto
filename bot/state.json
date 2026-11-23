@@ -1700,12 +1700,17 @@
    "t": 1795424036743,
    "equity": 93.42556254643729,
    "open": 0
+  },
+  {
+   "t": 1795468353011,
+   "equity": 93.42556254643729,
+   "open": 0
   }
  ],
  "feesPaid": 1.5386683737824478,
  "fundingPaid": 0.6315033615295395,
- "ticks": 267,
- "lastTick": 1795424036743,
+ "ticks": 268,
+ "lastTick": 1795468353011,
  "createdAt": 1790150941924,
  "notes": [
   {
@@ -1958,71 +1963,71 @@
  "positions": {},
  "status": {
   "BTCUSDT": {
-   "t": 1795424024750,
+   "t": 1795468340376,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1792742400000
   },
   "ETHUSDT": {
-   "t": 1795424026079,
+   "t": 1795468341738,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1791043200000
   },
   "SOLUSDT": {
-   "t": 1795424027412,
+   "t": 1795468343098,
    "type": "wait",
-   "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "reason": "日線空頭，4H 不是空頭排列，不做",
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1791417600000
   },
   "XRPUSDT": {
-   "t": 1795424028742,
+   "t": 1795468344467,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000
+   "lastBarT": 1795449600000
   },
   "DOGEUSDT": {
-   "t": 1795424030076,
+   "t": 1795468345844,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000
+   "lastBarT": 1795449600000
   },
   "ADAUSDT": {
-   "t": 1795424031404,
+   "t": 1795468347222,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1791043200000
   },
   "LINKUSDT": {
-   "t": 1795424032748,
+   "t": 1795468348595,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1790668800000
   },
   "AVAXUSDT": {
-   "t": 1795424034081,
+   "t": 1795468349973,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1791417600000
   },
   "LTCUSDT": {
-   "t": 1795424035412,
+   "t": 1795468351645,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1791086400000
   },
   "DOTUSDT": {
-   "t": 1795424036742,
+   "t": 1795468353010,
    "type": "wait",
    "reason": "反彈中，等收盤重新跌破 EMA20",
-   "lastBarT": 1795406400000,
+   "lastBarT": 1795449600000,
    "cooldownUntil": 1791921600000
   }
  }
